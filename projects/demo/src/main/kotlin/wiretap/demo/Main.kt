@@ -8,8 +8,8 @@ import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.core.logSnap
 import wiretap.slf4j.core.ActivityLogger
-import wiretap.util.FeedToMessagePart
-import wiretap.util.FeedToStateItem
+import wiretap.util.MessagePart
+import wiretap.util.StateItem
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 private val wiretap = ActivityLogger.getLogger("wiretap.demo")
@@ -56,12 +56,12 @@ private class ParseDocument(private val documentType: String) : Activity.Buzz() 
 }
 
 private class SaveRecord(
-    @FeedToStateItem
-    @FeedToMessagePart("Row")
+    @StateItem
+    @MessagePart("Row")
     private val rowIndex: Int,
 
-    @FeedToStateItem
-    @FeedToMessagePart("Record")
+    @StateItem
+    @MessagePart("Record")
     private val recordId: String,
 ) : Activity.Snap() {
     override val name: String = "SaveRecord"

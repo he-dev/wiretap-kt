@@ -2,15 +2,15 @@ package wiretap.util
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class FeedToStateItem(
+annotation class StateItem(
     val name: String = "",
 )
 
-const val FeedToMessagePartNoLabel: String = "\u0000"
+const val MessagePartNoLabel: String = "\u0000"
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class FeedToMessagePart(
-    val label: String = FeedToMessagePartNoLabel,
+annotation class MessagePart(
+    val label: String = MessagePartNoLabel,
     val separator: String = ": ",
 )

@@ -10,8 +10,8 @@ import wiretap.util.ActivityStatus
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.util.ActivityLogRecord
-import wiretap.util.FeedToMessagePart
-import wiretap.util.FeedToStateItem
+import wiretap.util.MessagePart
+import wiretap.util.StateItem
 import wiretap.core.logSnap
 import wiretap.util.Wiretap
 
@@ -145,12 +145,12 @@ class WiretapTest {
     }
 
     private class SaveRecord(
-        @FeedToStateItem
-        @FeedToMessagePart("Row")
+        @StateItem
+        @MessagePart("Row")
         private val rowIndex: Int,
 
-        @FeedToStateItem
-        @FeedToMessagePart("Record")
+        @StateItem
+        @MessagePart("Record")
         private val recordId: String,
     ) : Activity.Snap() {
         override val name: String = "SaveRecord"
@@ -159,13 +159,13 @@ class WiretapTest {
     }
 
     private class MessagePartLabelCase(
-        @FeedToMessagePart
+        @MessagePart
         private val noLabel: String,
 
-        @FeedToMessagePart("")
+        @MessagePart("")
         private val defaultLabel: String,
 
-        @FeedToMessagePart("Alias")
+        @MessagePart("Alias")
         private val alias: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
