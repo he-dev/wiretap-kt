@@ -39,47 +39,37 @@ fun main() {
     }
 }
 
-private class ImportDocument(private val source: String) : Activity.Buzz() {
-    override val name: String = "ImportDocument"
-
+class ImportDocument(private val source: String) : Activity.Buzz() {
     override val tags: Set<String> = setOf("import")
 
     class Okay(val recordsSaved: Int) : ActivityStatus.Okay<ImportDocument>()
 }
 
-private class ParseDocument(private val documentType: String) : Activity.Buzz() {
-    override val name: String = "ParseDocument"
-
+class ParseDocument(private val documentType: String) : Activity.Buzz() {
     override val tags: Set<String> = setOf("parse")
 
     class Okay(val recordsParsed: Int) : ActivityStatus.Okay<ParseDocument>()
 }
 
-private class SaveRecord(
+class SaveRecord(
     @StateItem
     @MessagePart("Row")
-    private val rowIndex: Int,
+    val rowIndex: Int,
 
     @StateItem
     @MessagePart("Record")
-    private val recordId: String,
+    val recordId: String,
 ) : Activity.Snap() {
-    override val name: String = "SaveRecord"
-
     override val tags: Set<String> = setOf("storage")
 
     class Okay : ActivityStatus.Okay<SaveRecord>()
 }
 
-private class DeleteFiles : Activity.Bulk<DeleteFile>() {
-    override val name: String = "DeleteFiles"
-
+class DeleteFiles : Activity.Bulk<DeleteFile>() {
     class Okay : ActivityStatus.Okay<DeleteFiles>()
 }
 
-private class DeleteFile(private val path: String) : Activity.Buzz() {
-    override val name: String = "DeleteFile"
-
+class DeleteFile(private val path: String) : Activity.Buzz() {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)

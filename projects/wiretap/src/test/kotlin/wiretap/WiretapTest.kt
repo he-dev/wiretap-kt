@@ -106,6 +106,18 @@ class WiretapTest {
     }
 
     @Test
+    fun annotationsOnlyReflectPublicProperties() {
+        val records = mutableListOf<ActivityLogRecord>()
+        val logger = TestActivityLogger(records)
+
+        logger.logSnap(PrivateAnnotatedRecord("hidden"), PrivateAnnotatedRecord.Okay())
+
+        val record = records.single()
+        assertNull(record.stateItems["wiretap.activity.state.secret"])
+        assertEquals("PrivateAnnotatedRecord[Okay]; Duration: N/A", record.message)
+    }
+
+    @Test
     fun stateItemsCanCascadeFromParentActivities() {
         val records = mutableListOf<ActivityLogRecord>()
         val logger = TestActivityLogger(records)
@@ -138,79 +150,73 @@ class WiretapTest {
         )
     }
 
-    private class ImportDocument : Activity.Buzz() {
-        override val name: String = "ImportDocument"
-
+    class ImportDocument : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ImportDocument>()
     }
 
-    private class ImportDocumentWithState(
+    class ImportDocumentWithState(
         @StateItem(cascade = true)
-        private val source: String,
+        val source: String,
 
         @StateItem
-        private val localOnly: String,
+        val localOnly: String,
     ) : Activity.Buzz() {
-        override val name: String = "ImportDocument"
-
         class Okay : ActivityStatus.Okay<ImportDocumentWithState>()
     }
 
-    private class ParseDocument : Activity.Buzz() {
-        override val name: String = "ParseDocument"
-
+    class ParseDocument : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ParseDocument>()
     }
 
-    private class ParseDocumentWithState(
+    class ParseDocumentWithState(
         @StateItem(cascade = true)
-        private val documentType: String,
+        val documentType: String,
 
         @StateItem
-        private val localOnly: String,
+        val localOnly: String,
     ) : Activity.Buzz() {
-        override val name: String = "ParseDocument"
-
         class Okay : ActivityStatus.Okay<ParseDocumentWithState>()
     }
 
-    private class DeleteFiles : Activity.Bulk<DeleteFile>() {
-        override val name: String = "DeleteFiles"
-
+    class DeleteFiles : Activity.Bulk<DeleteFile>() {
         class Okay : ActivityStatus.Okay<DeleteFiles>()
     }
 
-    private class DeleteFile : Activity.Buzz() {
-        override val name: String = "DeleteFile"
-
+    class DeleteFile : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<DeleteFile>()
 
         class Fail : ActivityStatus.Fail<DeleteFile>()
     }
 
-    private class SaveRecord(
+    class SaveRecord(
         @StateItem
         @MessagePart("Row")
-        private val rowIndex: Int,
+        val rowIndex: Int,
 
         @StateItem
         @MessagePart("Record")
-        private val recordId: String,
+        val recordId: String,
     ) : Activity.Snap() {
-        override val name: String = "SaveRecord"
-
         class Okay : ActivityStatus.Okay<SaveRecord>()
     }
 
-    private class MessagePartLabelCase(
+    class PrivateAnnotatedRecord(
+        @StateItem
+        @MessagePart("Secret")
+        private val secret: String,
+    ) : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<PrivateAnnotatedRecord>()
+    }
+
+    class MessagePartLabelCase(
         @MessagePart
-        private val noLabel: String,
+        val noLabel: String,
 
         @MessagePart("")
-        private val defaultLabel: String,
+        val defaultLabel: String,
 
         @MessagePart("Alias")
-        private val alias: String,
+        val alias: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
     }

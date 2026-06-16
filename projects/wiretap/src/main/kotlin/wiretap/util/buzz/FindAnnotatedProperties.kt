@@ -4,10 +4,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KAnnotatedElement
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KVisibility
 import kotlin.reflect.full.cast
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
-import kotlin.reflect.jvm.isAccessible
 
 object FindAnnotatedProperties {
     private val cache = ConcurrentHashMap<Key, List<AnnotatedProperty<out Annotation>>>()
@@ -28,7 +28,8 @@ object FindAnnotatedProperties {
     ): List<AnnotatedProperty<A>> =
         type.memberProperties.mapNotNull { property ->
             val annotation = property.findAnnotation(annotationType) ?: return@mapNotNull null
-            property.isAccessible = true
+            // todo: Warn through the internal logger when an annotated property is not public.
+            if (property.visibility != KVisibility.PUBLIC) return@mapNotNull null
             AnnotatedProperty(annotation, property)
         }.orderByConstructor(type) { it.property.name }
 

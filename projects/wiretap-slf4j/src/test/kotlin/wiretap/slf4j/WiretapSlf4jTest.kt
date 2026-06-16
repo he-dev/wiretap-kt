@@ -21,8 +21,6 @@ class WiretapSlf4jTest {
     }
 
     private class TestActivity : Activity.Buzz() {
-        override val name: String = "TestActivity"
-
         class Okay : ActivityStatus.Okay<TestActivity>()
     }
 }
