@@ -5,6 +5,7 @@ import wiretap.Wiretap
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
 import wiretap.util.beginBuzz
+import wiretap.util.beginBulk
 import wiretap.util.logSnap
 import wiretap.slf4j.WiretapSlf4j
 
@@ -21,6 +22,18 @@ fun main() {
 
         import.setStatus(ImportDocument.Okay(recordsSaved = 2))
         wiretap.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
+    }
+
+    wiretap.beginBulk(DeleteFiles()).use { bulk ->
+        bulk.beginItem(DeleteFile("/tmp/one.csv")).use { item ->
+            item.setStatus(DeleteFile.Okay())
+        }
+
+        bulk.beginItem(DeleteFile("/tmp/two.tmp")).use { item ->
+            item.setStatus(DeleteFile.Fail(IllegalStateException("Temporary files are skipped.")))
+        }
+
+        bulk.setStatus(DeleteFiles.Okay())
     }
 }
 
@@ -49,4 +62,18 @@ private class SaveRecord(
     override val tags: List<String> = listOf("storage")
 
     class Okay : ActivityStatus.Okay<SaveRecord>()
+}
+
+private class DeleteFiles : Activity.Bulk<DeleteFile>() {
+    override val name: String = "DeleteFiles"
+
+    class Okay : ActivityStatus.Okay<DeleteFiles>()
+}
+
+private class DeleteFile(private val path: String) : Activity.Buzz() {
+    override val name: String = "DeleteFile"
+
+    class Okay : ActivityStatus.Okay<DeleteFile>()
+
+    class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)
 }

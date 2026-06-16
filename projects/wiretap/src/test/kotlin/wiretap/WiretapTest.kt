@@ -8,6 +8,7 @@ import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.beginBuzz
+import wiretap.util.beginBulk
 import wiretap.util.buzz.ActivityLogRecord
 
 class WiretapTest {
@@ -63,6 +64,30 @@ class WiretapTest {
         assertEquals(listOf("ImportDocument", "ImportDocument"), records.map { it.scope.activity.name })
     }
 
+    @Test
+    fun bulkCountsItemStatuses() {
+        val records = mutableListOf<ActivityLogRecord>()
+        val logger = TestActivityLogger(records)
+
+        logger.beginBulk(DeleteFiles()).use { bulk ->
+            bulk.beginItem(DeleteFile()).use { item ->
+                item.setStatus(DeleteFile.Okay())
+            }
+
+            bulk.beginItem(DeleteFile()).use { item ->
+                item.setStatus(DeleteFile.Fail())
+            }
+
+            bulk.setStatus(DeleteFiles.Okay())
+        }
+
+        val final = records.last()
+        assertEquals("DeleteFiles", final.scope.activity.name)
+        assertEquals(2, final.stateItems["activity.state.item_count"])
+        assertEquals(1, final.stateItems["activity.state.okay_count"])
+        assertEquals(1, final.stateItems["activity.state.fail_count"])
+    }
+
     private class ImportDocument : Activity.Buzz() {
         override val name: String = "ImportDocument"
 
@@ -73,6 +98,20 @@ class WiretapTest {
         override val name: String = "ParseDocument"
 
         class Okay : ActivityStatus.Okay<ParseDocument>()
+    }
+
+    private class DeleteFiles : Activity.Bulk<DeleteFile>() {
+        override val name: String = "DeleteFiles"
+
+        class Okay : ActivityStatus.Okay<DeleteFiles>()
+    }
+
+    private class DeleteFile : Activity.Buzz() {
+        override val name: String = "DeleteFile"
+
+        class Okay : ActivityStatus.Okay<DeleteFile>()
+
+        class Fail : ActivityStatus.Fail<DeleteFile>()
     }
 
     private class TestActivityLogger(

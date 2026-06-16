@@ -15,6 +15,7 @@ data class ActivityLogRecord(
         fun from(scope: ActivityScope<*>, status: ActivityStatus<*>): ActivityLogRecord {
             val state = linkedMapOf<String, Any?>()
             val root = PropertyName()
+            val composeMessage = ComposeMessageByAppending()
 
             val pushState = PushStateItem { key, value ->
                 if (value != null) {
@@ -29,7 +30,10 @@ data class ActivityLogRecord(
                 scope.activity.stateItems(root, pushState)
             }
 
-            val message = composeMessage(scope, status)
+            val message = composeMessage(
+                state,
+                *messageFeeds(scope, status).toTypedArray(),
+            )
 
             return ActivityLogRecord(
                 scope = scope,
@@ -40,24 +44,18 @@ data class ActivityLogRecord(
             )
         }
 
-        private fun composeMessage(
+        private fun messageFeeds(
             scope: ActivityScope<*>,
             status: ActivityStatus<*>,
-        ): String {
-            val parts = mutableListOf("${scope.activity.name}[${status.code}]")
+        ): List<MessagePartFeed> =
+            buildList {
+                add(scope)
 
-            if (scope.durationMs != null) {
-                parts += "Duration: ${scope.durationMs} ms"
-            } else {
-                parts += "Duration: N/A"
+                if (scope.activity is MessagePartFeed) {
+                    add(scope.activity as MessagePartFeed)
+                }
+
+                add(status)
             }
-
-            val exception = status.exception
-            if (exception?.message != null) {
-                parts += exception.message.toString()
-            }
-
-            return parts.joinToString("; ")
-        }
     }
 }

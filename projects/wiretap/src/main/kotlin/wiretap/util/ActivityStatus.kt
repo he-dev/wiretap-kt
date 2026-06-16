@@ -1,6 +1,9 @@
 package wiretap.util
 
 import wiretap.util.buzz.PropertyName
+import wiretap.util.buzz.GetStateItem
+import wiretap.util.buzz.MessagePartFeed
+import wiretap.util.buzz.PushMessagePart
 import wiretap.util.buzz.PushStateItem
 import wiretap.util.buzz.StateItemFeed
 import wiretap.util.buzz.activity
@@ -30,7 +33,7 @@ interface Last : ActivityStatusRole {
 
 abstract class ActivityStatus<A : Activity>(
     open val exception: Throwable? = null,
-) : StateItemFeed {
+) : StateItemFeed, MessagePartFeed {
     open val code: String
         get() = this::class.simpleName ?: "Status"
 
@@ -39,6 +42,9 @@ abstract class ActivityStatus<A : Activity>(
     override fun stateItems(name: PropertyName, push: PushStateItem) {
         push(name.activity.status.code, code)
         push(name.activity.status.role, (this as? ActivityStatusRole)?.role)
+    }
+
+    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {
@@ -59,6 +65,10 @@ abstract class ActivityStatus<A : Activity>(
         override val code: String = "Fail"
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
+
+        override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
+            exception?.message?.let { push(it) }
+        }
     }
 
     class Void<A : Activity>(
@@ -67,5 +77,9 @@ abstract class ActivityStatus<A : Activity>(
         override val code: String = "Void"
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Warning
+
+        override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
+            push(reason)
+        }
     }
 }

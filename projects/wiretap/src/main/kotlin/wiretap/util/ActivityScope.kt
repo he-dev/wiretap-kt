@@ -20,7 +20,7 @@ import wiretap.util.buzz.status
 import wiretap.util.buzz.tags
 
 abstract class ActivityScope<A : Activity>(
-    private val logger: ActivityLogger?,
+    protected val logger: ActivityLogger?,
     val activity: A,
     val parent: ActivityScope<*>?,
 ) : AutoCloseable, StateItemFeed, MessagePartFeed {
@@ -74,11 +74,12 @@ abstract class ActivityScope<A : Activity>(
     }
 }
 
-class BuzzScope<A : Activity.Buzz>(
+open class BuzzScope<A : Activity.Buzz>(
     logger: ActivityLogger? = null,
     activity: A,
     parent: ActivityScope<*>?,
     private val statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+    private val onLastStatus: ((ActivityStatus<A>, Long) -> Unit)? = null,
 ) : ActivityScope<A>(logger, activity, parent) {
     private val startedAt = TimeSource.Monotonic.markNow()
     private var lastStatus: ActivityStatus<A>? = null
@@ -117,6 +118,11 @@ class BuzzScope<A : Activity.Buzz>(
         push(name.activity.durationMs, durationMs)
     }
 
+    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
+        super.messageParts(root, get, push)
+        push("Duration: %d ms", get(root.activity.durationMs))
+    }
+
     override fun close() {
         val status = lastStatus ?: ActivityStatus.Void<A>().also {
             lastStatus = it
@@ -126,6 +132,7 @@ class BuzzScope<A : Activity.Buzz>(
             record(status)
         }
 
+        onLastStatus?.invoke(status, durationMs)
         super.close()
     }
 
@@ -137,6 +144,72 @@ class BuzzScope<A : Activity.Buzz>(
             statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
         ): BuzzScope<A> =
             BuzzScope(logger, activity, parent, statusLogOptions).push()
+    }
+}
+
+class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
+    logger: ActivityLogger? = null,
+    activity: B,
+    parent: ActivityScope<*>?,
+    statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+) : BuzzScope<B>(logger, activity, parent, statusLogOptions) {
+    private val math = BulkMath()
+
+    override val role: String = "bulk"
+
+    override fun push(): BulkScope<B, I> {
+        super.push()
+        return this
+    }
+
+    fun beginItem(activity: I): ItemScope<I> =
+        ItemScope.push(logger, activity, parent = this, math, this.activity.itemStatusLogOptions)
+
+    override fun stateItems(name: PropertyName, push: PushStateItem) {
+        super.stateItems(name, push)
+        math.stateItems(name, push)
+    }
+
+    companion object {
+        fun <B : Activity.Bulk<I>, I : Activity.Buzz> push(
+            logger: ActivityLogger? = null,
+            activity: B,
+            parent: ActivityScope<*>? = ActivityScope.current(),
+            statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+        ): BulkScope<B, I> =
+            BulkScope(logger, activity, parent, statusLogOptions).push()
+    }
+}
+
+class ItemScope<I : Activity.Buzz>(
+    logger: ActivityLogger? = null,
+    activity: I,
+    parent: ActivityScope<*>?,
+    private val math: BulkMath,
+    statusLogOptions: Set<StatusLogOption>,
+) : BuzzScope<I>(
+    logger = logger,
+    activity = activity,
+    parent = parent,
+    statusLogOptions = statusLogOptions,
+    onLastStatus = { status, durationMs -> math.count(status, durationMs) },
+) {
+    override val role: String = "item"
+
+    override fun push(): ItemScope<I> {
+        super.push()
+        return this
+    }
+
+    companion object {
+        fun <I : Activity.Buzz> push(
+            logger: ActivityLogger? = null,
+            activity: I,
+            parent: ActivityScope<*>?,
+            math: BulkMath,
+            statusLogOptions: Set<StatusLogOption>,
+        ): ItemScope<I> =
+            ItemScope(logger, activity, parent, math, statusLogOptions).push()
     }
 }
 
@@ -157,8 +230,9 @@ class SnapScope<A : Activity.Snap>(
         return this
     }
 
-    override fun stateItems(name: PropertyName, push: PushStateItem) {
-        super.stateItems(name, push)
+    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
+        super.messageParts(root, get, push)
+        push("Duration: N/A")
     }
 
     companion object {
