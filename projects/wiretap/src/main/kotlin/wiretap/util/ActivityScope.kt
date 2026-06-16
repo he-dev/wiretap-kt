@@ -47,6 +47,7 @@ abstract class ActivityScope<A : Activity>(
     open val durationMs: Long? = null
 
     protected open fun push(): ActivityScope<A> {
+        // meta: Ambient scope is restored by close, which is why callers must use the returned scope with use.
         ambient = ActivityScopeAmbient.push(this)
         return this
     }
@@ -123,6 +124,7 @@ open class BuzzScope<A : Activity.Buzz>(
     }
 
     override fun close() {
+        // core: A buzz without an explicit final status is still logged so open scopes cannot disappear silently.
         val status = lastStatus ?: ActivityStatus.Void<A>().also {
             lastStatus = it
         }
@@ -162,6 +164,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     }
 
     fun beginItem(activity: I): ItemScope<I> =
+        // core: Items report their final status into the parent bulk math instead of owning a separate summary.
         ItemScope.push(logger, activity, parent = this, math, this.activity.itemStatusLogOptions)
 
     override fun logProperties(root: PropertyName, push: PushLogProperty) {

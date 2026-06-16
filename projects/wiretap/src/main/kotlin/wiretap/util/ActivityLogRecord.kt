@@ -28,6 +28,14 @@ data class ActivityLogRecord(
                 }
             }
 
+            // core: Cascaded parent state is pushed from root to leaf so nearer scopes can override earlier values.
+            scope.parents()
+                .asReversed()
+                .forEach { parent ->
+                    AnnotatedStateItems.pushFrom(root.state, pushState, parent.activity, cascadingOnly = true)
+                }
+
+            // core: Scope/status metadata is written before activity annotations so explicit activity state can win.
             scope.logProperties(root, pushState)
             status.logProperties(root, pushState)
 
@@ -49,3 +57,6 @@ data class ActivityLogRecord(
         }
     }
 }
+
+private fun ActivityScope<*>.parents(): List<ActivityScope<*>> =
+    generateSequence(parent) { it.parent }.toList()

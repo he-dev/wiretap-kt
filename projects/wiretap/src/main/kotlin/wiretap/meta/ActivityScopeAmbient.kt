@@ -12,6 +12,7 @@ internal object ActivityScopeAmbient {
         val previous = current.get()
         current.set(scope)
 
+        // meta: Closing restores the previous scope so nested use blocks unwind in stack order.
         return AutoCloseable {
             current.set(previous)
         }

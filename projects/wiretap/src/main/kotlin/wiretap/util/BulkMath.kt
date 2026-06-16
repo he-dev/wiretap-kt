@@ -15,6 +15,7 @@ class BulkMath : LogPropertyFeed {
         private set
 
     fun count(status: ActivityStatus<*>, durationMs: Long) {
+        // util: Bulk math records item outcomes only after each item reaches its final status.
         itemCount += 1
         this.durationMs += durationMs
 

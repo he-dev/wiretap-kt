@@ -17,6 +17,7 @@ object FindAnnotatedProperties {
 
     @Suppress("UNCHECKED_CAST")
     fun <A : Annotation> on(type: KClass<*>, annotationType: KClass<A>): List<AnnotatedProperty<A>> =
+        // meta: Reflection is cached per source type and annotation type because log paths can be hot.
         cache.getOrPut(Key(type, annotationType)) {
             discover(type, annotationType)
         } as List<AnnotatedProperty<A>>
@@ -32,6 +33,7 @@ object FindAnnotatedProperties {
         }.orderByConstructor(type) { it.property.name }
 
     private fun <T> List<T>.orderByConstructor(type: KClass<*>, nameOf: (T) -> String): List<T> {
+        // meta: Constructor order preserves data-class declaration order; alphabetical order is only a fallback.
         val parameterOrder = type.primaryConstructor
             ?.parameters
             ?.mapIndexedNotNull { index, parameter -> parameter.name?.let { it to index } }

@@ -27,6 +27,7 @@ class ComposeMessageByAppending(
         }
 
         for (feed in feeds) {
+            // core: Explicit message feeds run before annotated parts so custom text can lead the message.
             if (feed is MessagePartFeed) {
                 feed.messageParts(root, get, push)
             }

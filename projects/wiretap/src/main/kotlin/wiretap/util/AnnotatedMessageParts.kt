@@ -13,6 +13,7 @@ object AnnotatedMessageParts {
             val value = property.value(source) ?: continue
             val annotation = property.annotation
 
+            // core: Null-label sentinel means no label; empty label means use the property name.
             when (annotation.label) {
                 MessagePartNoLabel -> push("%s", value)
                 "" -> push("${property.name}${annotation.separator}%s", value)

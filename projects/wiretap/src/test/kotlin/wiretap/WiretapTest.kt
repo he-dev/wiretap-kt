@@ -106,6 +106,26 @@ class WiretapTest {
     }
 
     @Test
+    fun stateItemsCanCascadeFromParentActivities() {
+        val records = mutableListOf<ActivityLogRecord>()
+        val logger = TestActivityLogger(records)
+
+        logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")).use { import ->
+            logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")).use { parse ->
+                logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
+                parse.setStatus(ParseDocumentWithState.Okay())
+            }
+
+            import.setStatus(ImportDocumentWithState.Okay())
+        }
+
+        val snap = records.first { it.scope.activity is SaveRecord }
+        assertEquals("customers.csv", snap.stateItems["wiretap.activity.state.source"])
+        assertEquals("csv", snap.stateItems["wiretap.activity.state.documentType"])
+        assertNull(snap.stateItems["wiretap.activity.state.localOnly"])
+    }
+
+    @Test
     fun messagePartLabelsCanBeOmittedDefaultedOrAliased() {
         val records = mutableListOf<ActivityLogRecord>()
         val logger = TestActivityLogger(records)
@@ -124,10 +144,34 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<ImportDocument>()
     }
 
+    private class ImportDocumentWithState(
+        @StateItem(cascade = true)
+        private val source: String,
+
+        @StateItem
+        private val localOnly: String,
+    ) : Activity.Buzz() {
+        override val name: String = "ImportDocument"
+
+        class Okay : ActivityStatus.Okay<ImportDocumentWithState>()
+    }
+
     private class ParseDocument : Activity.Buzz() {
         override val name: String = "ParseDocument"
 
         class Okay : ActivityStatus.Okay<ParseDocument>()
+    }
+
+    private class ParseDocumentWithState(
+        @StateItem(cascade = true)
+        private val documentType: String,
+
+        @StateItem
+        private val localOnly: String,
+    ) : Activity.Buzz() {
+        override val name: String = "ParseDocument"
+
+        class Okay : ActivityStatus.Okay<ParseDocumentWithState>()
     }
 
     private class DeleteFiles : Activity.Bulk<DeleteFile>() {

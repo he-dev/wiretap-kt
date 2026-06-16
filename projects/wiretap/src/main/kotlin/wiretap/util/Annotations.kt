@@ -4,6 +4,7 @@ package wiretap.util
 @Retention(AnnotationRetention.RUNTIME)
 annotation class StateItem(
     val name: String = "",
+    val cascade: Boolean = false,
 )
 
 const val MessagePartNoLabel: String = "\u0000"
