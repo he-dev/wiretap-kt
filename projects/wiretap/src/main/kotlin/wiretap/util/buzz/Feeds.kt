@@ -1,6 +1,6 @@
 package wiretap.util.buzz
 
-fun interface PushStateItem {
+fun interface PushLogProperty {
     operator fun invoke(key: String, value: Any?)
 
     operator fun invoke(key: PropertyName, value: Any?) =
@@ -18,8 +18,8 @@ fun interface GetStateItem {
         invoke(key.toString())
 }
 
-interface StateItemFeed {
-    fun stateItems(name: PropertyName, push: PushStateItem)
+interface LogPropertyFeed {
+    fun logProperties(root: PropertyName, push: PushLogProperty)
 }
 
 interface MessagePartFeed {

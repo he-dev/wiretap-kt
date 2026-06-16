@@ -1,9 +1,11 @@
 package wiretap.util.buzz
 
+import wiretap.util.AnnotatedMessageParts
+
 fun interface ComposeMessage {
     operator fun invoke(
         stateItems: Map<String, Any?>,
-        vararg feeds: MessagePartFeed,
+        vararg feeds: Any?,
     ): String
 }
 
@@ -12,9 +14,9 @@ class ComposeMessageByAppending(
 ) : ComposeMessage {
     override fun invoke(
         stateItems: Map<String, Any?>,
-        vararg feeds: MessagePartFeed,
+        vararg feeds: Any?,
     ): String {
-        val root = PropertyName()
+        val root = PropertyName().wiretap.activity
         val get = GetStateItem { key -> stateItems[key] }
         val parts = mutableListOf<String>()
 
@@ -25,7 +27,10 @@ class ComposeMessageByAppending(
         }
 
         for (feed in feeds) {
-            feed.messageParts(root, get, push)
+            if (feed is MessagePartFeed) {
+                feed.messageParts(root, get, push)
+            }
+            AnnotatedMessageParts.pushFrom(root, push, feed)
         }
 
         return parts.joinToString(separator)

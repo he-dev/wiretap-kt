@@ -4,13 +4,14 @@ import kotlin.test.Test
 import kotlin.test.assertNotNull
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
-import wiretap.util.beginBuzz
+import wiretap.core.beginBuzz
 import org.slf4j.helpers.NOPLogger
+import wiretap.slf4j.core.ActivityLogger
 
 class WiretapSlf4jTest {
     @Test
     fun beginsBuzzWithSlf4jLogger() {
-        val adapter = WiretapSlf4j(NOPLogger.NOP_LOGGER)
+        val adapter = ActivityLogger(NOPLogger.NOP_LOGGER)
 
         adapter.beginBuzz(TestActivity()).use { scope ->
             scope.setStatus(TestActivity.Okay())

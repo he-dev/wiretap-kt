@@ -4,9 +4,8 @@ import wiretap.util.buzz.PropertyName
 import wiretap.util.buzz.GetStateItem
 import wiretap.util.buzz.MessagePartFeed
 import wiretap.util.buzz.PushMessagePart
-import wiretap.util.buzz.PushStateItem
-import wiretap.util.buzz.StateItemFeed
-import wiretap.util.buzz.activity
+import wiretap.util.buzz.PushLogProperty
+import wiretap.util.buzz.LogPropertyFeed
 import wiretap.util.buzz.code
 import wiretap.util.buzz.role
 import wiretap.util.buzz.status
@@ -33,18 +32,19 @@ interface Last : ActivityStatusRole {
 
 abstract class ActivityStatus<A : Activity>(
     open val exception: Throwable? = null,
-) : StateItemFeed, MessagePartFeed {
+) : LogPropertyFeed, MessagePartFeed {
     open val code: String
         get() = this::class.simpleName ?: "Status"
 
     open val level: ActivityStatusLevel = ActivityStatusLevel.Info
 
-    override fun stateItems(name: PropertyName, push: PushStateItem) {
-        push(name.activity.status.code, code)
-        push(name.activity.status.role, (this as? ActivityStatusRole)?.role)
+    override fun logProperties(root: PropertyName, push: PushLogProperty) {
+        push(root.status.code, code)
+        push(root.status.role, (this as? ActivityStatusRole)?.role)
     }
 
     override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
+        AnnotatedMessageParts.pushFrom(root.status, push, this)
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {

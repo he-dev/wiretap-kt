@@ -7,9 +7,13 @@ import wiretap.util.ActivityLogger
 import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
-import wiretap.util.beginBuzz
-import wiretap.util.beginBulk
-import wiretap.util.buzz.ActivityLogRecord
+import wiretap.core.beginBuzz
+import wiretap.core.beginBulk
+import wiretap.util.ActivityLogRecord
+import wiretap.util.FeedToMessagePart
+import wiretap.util.FeedToStateItem
+import wiretap.core.logSnap
+import wiretap.util.Wiretap
 
 class WiretapTest {
     private val logger = TestActivityLogger()
@@ -83,9 +87,35 @@ class WiretapTest {
 
         val final = records.last()
         assertEquals("DeleteFiles", final.scope.activity.name)
-        assertEquals(2, final.stateItems["activity.state.item_count"])
-        assertEquals(1, final.stateItems["activity.state.okay_count"])
-        assertEquals(1, final.stateItems["activity.state.fail_count"])
+        assertEquals(2, final.stateItems["wiretap.activity.state.item_count"])
+        assertEquals(1, final.stateItems["wiretap.activity.state.okay_count"])
+        assertEquals(1, final.stateItems["wiretap.activity.state.fail_count"])
+    }
+
+    @Test
+    fun annotationsFeedStateItemsAndMessageParts() {
+        val records = mutableListOf<ActivityLogRecord>()
+        val logger = TestActivityLogger(records)
+
+        logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
+
+        val record = records.single()
+        assertEquals(1, record.stateItems["wiretap.activity.state.rowIndex"])
+        assertEquals("customer-001", record.stateItems["wiretap.activity.state.recordId"])
+        assertEquals("SaveRecord[Okay]; Duration: N/A; Row: 1; Record: customer-001", record.message)
+    }
+
+    @Test
+    fun messagePartLabelsCanBeOmittedDefaultedOrAliased() {
+        val records = mutableListOf<ActivityLogRecord>()
+        val logger = TestActivityLogger(records)
+
+        logger.logSnap(MessagePartLabelCase("alpha", "bravo", "charlie"), MessagePartLabelCase.Okay())
+
+        assertEquals(
+            "MessagePartLabelCase[Okay]; Duration: N/A; alpha; defaultLabel: bravo; Alias: charlie",
+            records.single().message,
+        )
     }
 
     private class ImportDocument : Activity.Buzz() {
@@ -112,6 +142,33 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<DeleteFile>()
 
         class Fail : ActivityStatus.Fail<DeleteFile>()
+    }
+
+    private class SaveRecord(
+        @FeedToStateItem
+        @FeedToMessagePart("Row")
+        private val rowIndex: Int,
+
+        @FeedToStateItem
+        @FeedToMessagePart("Record")
+        private val recordId: String,
+    ) : Activity.Snap() {
+        override val name: String = "SaveRecord"
+
+        class Okay : ActivityStatus.Okay<SaveRecord>()
+    }
+
+    private class MessagePartLabelCase(
+        @FeedToMessagePart
+        private val noLabel: String,
+
+        @FeedToMessagePart("")
+        private val defaultLabel: String,
+
+        @FeedToMessagePart("Alias")
+        private val alias: String,
+    ) : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
     }
 
     private class TestActivityLogger(

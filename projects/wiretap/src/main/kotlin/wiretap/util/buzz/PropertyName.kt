@@ -13,6 +13,7 @@ data class PropertyName(
         parts.joinToString(separator)
 }
 
+val PropertyName.wiretap: PropertyName get() = append("wiretap")
 val PropertyName.activity: PropertyName get() = append("activity")
 val PropertyName.state: PropertyName get() = append("state")
 val PropertyName.status: PropertyName get() = append("status")

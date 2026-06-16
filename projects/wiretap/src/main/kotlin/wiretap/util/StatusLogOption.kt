@@ -5,5 +5,5 @@ enum class StatusLogOption {
     Last,
 }
 
-val defaultStatusLogOptions: Set<StatusLogOption> =
+val bothStatusLogOptions: Set<StatusLogOption> =
     setOf(StatusLogOption.First, StatusLogOption.Last)

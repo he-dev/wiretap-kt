@@ -3,13 +3,11 @@ package wiretap.util
 import kotlin.time.TimeSource
 import wiretap.meta.ActivityScopeAmbient
 import wiretap.util.buzz.GetStateItem
-import wiretap.util.buzz.ActivityLogRecord
+import wiretap.util.buzz.LogPropertyFeed
 import wiretap.util.buzz.MessagePartFeed
 import wiretap.util.buzz.PropertyName
+import wiretap.util.buzz.PushLogProperty
 import wiretap.util.buzz.PushMessagePart
-import wiretap.util.buzz.PushStateItem
-import wiretap.util.buzz.StateItemFeed
-import wiretap.util.buzz.activity
 import wiretap.util.buzz.code
 import wiretap.util.buzz.depth
 import wiretap.util.buzz.durationMs
@@ -19,11 +17,20 @@ import wiretap.util.buzz.role
 import wiretap.util.buzz.status
 import wiretap.util.buzz.tags
 
+interface StackItem {
+    fun <A : Activity.Buzz> push(
+        logger: ActivityLogger,
+        activity: A,
+        parent: ActivityScope<*>? = ActivityScope.current(),
+        statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions
+    ): ActivityScope<A>
+}
+
 abstract class ActivityScope<A : Activity>(
-    protected val logger: ActivityLogger?,
+    protected val logger: ActivityLogger,
     val activity: A,
     val parent: ActivityScope<*>?,
-) : AutoCloseable, StateItemFeed, MessagePartFeed {
+) : AutoCloseable, LogPropertyFeed, MessagePartFeed {
     private var ambient: AutoCloseable? = null
 
     val depth: Int
@@ -44,23 +51,25 @@ abstract class ActivityScope<A : Activity>(
         return this
     }
 
-    protected fun record(status: ActivityStatus<A>) {
-        logger?.log(ActivityLogRecord.from(this, status))
+    abstract fun setStatus(status: ActivityStatus<A>);
+
+    protected fun log(status: ActivityStatus<A>) {
+        logger.log(ActivityLogRecord.from(this, status))
     }
 
-    override fun stateItems(name: PropertyName, push: PushStateItem) {
-        push(name.activity.name, activity.name)
-        push(name.activity.role, role)
-        push(name.activity.depth, depth)
-        push(name.activity.path, path)
+    override fun logProperties(root: PropertyName, push: PushLogProperty) {
+        push(root.name, activity.name)
+        push(root.role, role)
+        push(root.depth, depth)
+        push(root.path, path)
 
         if (activity.tags.isNotEmpty()) {
-            push(name.activity.tags, activity.tags)
+            push(root.tags, activity.tags)
         }
     }
 
     override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-        push("${activity.name}[${get(root.activity.status.code)}]")
+        push("${activity.name}[${get(root.status.code)}]")
     }
 
     override fun close() {
@@ -75,10 +84,10 @@ abstract class ActivityScope<A : Activity>(
 }
 
 open class BuzzScope<A : Activity.Buzz>(
-    logger: ActivityLogger? = null,
+    logger: ActivityLogger,
     activity: A,
     parent: ActivityScope<*>?,
-    private val statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+    private val statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
     private val onLastStatus: ((ActivityStatus<A>, Long) -> Unit)? = null,
 ) : ActivityScope<A>(logger, activity, parent) {
     private val startedAt = TimeSource.Monotonic.markNow()
@@ -89,38 +98,28 @@ open class BuzzScope<A : Activity.Buzz>(
     override val durationMs: Long
         get() = startedAt.elapsedNow().inWholeMilliseconds
 
-    val status: ActivityStatus<A>?
-        get() = lastStatus
-
-    val logsReadyStatus: Boolean
-        get() = StatusLogOption.First in statusLogOptions
-
-    val logsLastStatus: Boolean
-        get() = StatusLogOption.Last in statusLogOptions
-
-    fun setStatus(status: ActivityStatus<A>): BuzzScope<A> {
+    override fun setStatus(status: ActivityStatus<A>) {
         lastStatus = status
-        return this
     }
 
     override fun push(): BuzzScope<A> {
         super.push()
 
         if (StatusLogOption.First in statusLogOptions) {
-            record(ActivityStatus.Ready())
+            log(ActivityStatus.Ready())
         }
 
         return this
     }
 
-    override fun stateItems(name: PropertyName, push: PushStateItem) {
-        super.stateItems(name, push)
-        push(name.activity.durationMs, durationMs)
+    override fun logProperties(root: PropertyName, push: PushLogProperty) {
+        super.logProperties(root, push)
+        push(root.durationMs, durationMs)
     }
 
     override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
         super.messageParts(root, get, push)
-        push("Duration: %d ms", get(root.activity.durationMs))
+        push("Duration: %d ms", get(root.durationMs))
     }
 
     override fun close() {
@@ -129,7 +128,7 @@ open class BuzzScope<A : Activity.Buzz>(
         }
 
         if (StatusLogOption.Last in statusLogOptions) {
-            record(status)
+            log(status)
         }
 
         onLastStatus?.invoke(status, durationMs)
@@ -138,20 +137,20 @@ open class BuzzScope<A : Activity.Buzz>(
 
     companion object {
         fun <A : Activity.Buzz> push(
-            logger: ActivityLogger? = null,
+            logger: ActivityLogger,
             activity: A,
             parent: ActivityScope<*>? = ActivityScope.current(),
-            statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+            statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
         ): BuzzScope<A> =
             BuzzScope(logger, activity, parent, statusLogOptions).push()
     }
 }
 
 class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
-    logger: ActivityLogger? = null,
+    logger: ActivityLogger,
     activity: B,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
 ) : BuzzScope<B>(logger, activity, parent, statusLogOptions) {
     private val math = BulkMath()
 
@@ -165,24 +164,24 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     fun beginItem(activity: I): ItemScope<I> =
         ItemScope.push(logger, activity, parent = this, math, this.activity.itemStatusLogOptions)
 
-    override fun stateItems(name: PropertyName, push: PushStateItem) {
-        super.stateItems(name, push)
-        math.stateItems(name, push)
+    override fun logProperties(root: PropertyName, push: PushLogProperty) {
+        super.logProperties(root, push)
+        math.logProperties(root, push)
     }
 
     companion object {
         fun <B : Activity.Bulk<I>, I : Activity.Buzz> push(
-            logger: ActivityLogger? = null,
+            logger: ActivityLogger,
             activity: B,
             parent: ActivityScope<*>? = ActivityScope.current(),
-            statusLogOptions: Set<StatusLogOption> = defaultStatusLogOptions,
+            statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
         ): BulkScope<B, I> =
             BulkScope(logger, activity, parent, statusLogOptions).push()
     }
 }
 
 class ItemScope<I : Activity.Buzz>(
-    logger: ActivityLogger? = null,
+    logger: ActivityLogger,
     activity: I,
     parent: ActivityScope<*>?,
     private val math: BulkMath,
@@ -203,7 +202,7 @@ class ItemScope<I : Activity.Buzz>(
 
     companion object {
         fun <I : Activity.Buzz> push(
-            logger: ActivityLogger? = null,
+            logger: ActivityLogger,
             activity: I,
             parent: ActivityScope<*>?,
             math: BulkMath,
@@ -214,7 +213,7 @@ class ItemScope<I : Activity.Buzz>(
 }
 
 class SnapScope<A : Activity.Snap>(
-    logger: ActivityLogger? = null,
+    logger: ActivityLogger,
     activity: A,
     parent: ActivityScope<*>?,
 ) : ActivityScope<A>(logger, activity, parent) {
@@ -225,9 +224,8 @@ class SnapScope<A : Activity.Snap>(
         return this
     }
 
-    fun setStatus(status: ActivityStatus<A>): SnapScope<A> {
-        record(status)
-        return this
+    override fun setStatus(status: ActivityStatus<A>) {
+        log(status)
     }
 
     override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
@@ -237,7 +235,7 @@ class SnapScope<A : Activity.Snap>(
 
     companion object {
         fun <A : Activity.Snap> push(
-            logger: ActivityLogger? = null,
+            logger: ActivityLogger,
             activity: A,
             parent: ActivityScope<*>? = ActivityScope.current(),
         ): SnapScope<A> =

@@ -1,16 +1,18 @@
 package wiretap.demo
 
 import org.slf4j.LoggerFactory
-import wiretap.Wiretap
+import wiretap.util.Wiretap
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
-import wiretap.util.beginBuzz
-import wiretap.util.beginBulk
-import wiretap.util.logSnap
-import wiretap.slf4j.WiretapSlf4j
+import wiretap.core.beginBuzz
+import wiretap.core.beginBulk
+import wiretap.core.logSnap
+import wiretap.slf4j.core.ActivityLogger
+import wiretap.util.FeedToMessagePart
+import wiretap.util.FeedToStateItem
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
-private val wiretap = WiretapSlf4j.getLogger("wiretap.demo")
+private val wiretap = ActivityLogger.getLogger("wiretap.demo")
 
 fun main() {
     logger.info("{} demo", Wiretap.name)
@@ -40,7 +42,7 @@ fun main() {
 private class ImportDocument(private val source: String) : Activity.Buzz() {
     override val name: String = "ImportDocument"
 
-    override val tags: List<String> = listOf("import")
+    override val tags: Set<String> = setOf("import")
 
     class Okay(val recordsSaved: Int) : ActivityStatus.Okay<ImportDocument>()
 }
@@ -48,18 +50,23 @@ private class ImportDocument(private val source: String) : Activity.Buzz() {
 private class ParseDocument(private val documentType: String) : Activity.Buzz() {
     override val name: String = "ParseDocument"
 
-    override val tags: List<String> = listOf("parse")
+    override val tags: Set<String> = setOf("parse")
 
     class Okay(val recordsParsed: Int) : ActivityStatus.Okay<ParseDocument>()
 }
 
 private class SaveRecord(
+    @FeedToStateItem
+    @FeedToMessagePart("Row")
     private val rowIndex: Int,
+
+    @FeedToStateItem
+    @FeedToMessagePart("Record")
     private val recordId: String,
 ) : Activity.Snap() {
     override val name: String = "SaveRecord"
 
-    override val tags: List<String> = listOf("storage")
+    override val tags: Set<String> = setOf("storage")
 
     class Okay : ActivityStatus.Okay<SaveRecord>()
 }
