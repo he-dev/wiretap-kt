@@ -1,31 +1,27 @@
-package wiretap.util
+package wiretap.util.buzz
 
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.GetLogProperty
-import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.MessagePartOptions
-import wiretap.util.buzz.MessagePartSource
-import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.activity
-import wiretap.util.buzz.state
-import wiretap.util.buzz.wiretap
+import wiretap.util.LogEntry
+import wiretap.util.ActivityScope
+import wiretap.util.ActivityStatus
+import wiretap.util.AnnotatedStateItems
+import java.util.Locale
 
-class ActivityLogEntryFactory private constructor(
+class CreateLogEntry private constructor(
     private val root: PropertyName,
     private val arrangeMessageParts: MessageContext.() -> List<MessagePartMap.Entry>,
     private val joinMessageParts: List<MessagePartMap.Entry>.() -> String,
 ) {
-    fun create(scope: ActivityScope<*>, status: ActivityStatus<*>): ActivityLogEntry {
-        val properties = collectLogProperties(root, scope, status)
-        val standardMessageParts = collectMessageParts(root, properties, scope, status)
-        val messageContext = MessageContext(root, properties, standardMessageParts)
-        val arrangedMessageParts = messageContext.arrangeMessageParts()
+    fun from(scope: ActivityScope<*>, status: ActivityStatus<*>): LogEntry {
+        val logProperties = collectLogProperties(root.activity, scope, status)
+        val messageParts = collectMessageParts(root.activity, logProperties, scope, status)
+        val messageContext = MessageContext(root, logProperties, messageParts)
+        val messagePartsArranged = messageContext.arrangeMessageParts()
+        val message = messagePartsArranged.joinMessageParts()
 
-        return ActivityLogEntry(
+        return LogEntry(
             level = status.level,
-            message = arrangedMessageParts.joinMessageParts(),
-            properties = properties,
+            message = message,
+            properties = logProperties,
             exception = status.exception,
         )
     }
@@ -54,9 +50,9 @@ class ActivityLogEntryFactory private constructor(
             }
 
         // core: Framework scopes and optional user sources share one stable property feed.
-        addLogPropertiesFrom(scope, root, addLogProperty)
-        addLogPropertiesFrom(status, root, addLogProperty)
-        addLogPropertiesFrom(scope.activity, root, addLogProperty)
+        for (source in sequenceOf(scope, scope.activity, status).mapNotNull { it as? LogPropertySource }) {
+            source.logProperties(root, addLogProperty)
+        }
 
         AnnotatedStateItems.pushFrom(
             root.state,
@@ -82,10 +78,10 @@ class ActivityLogEntryFactory private constructor(
 
         for (source in listOf(scope.activity, status)) {
             (source as? MessagePartSource)?.messageParts(root, getLogProperty, addMessagePart)
-            AnnotatedMessageParts.addFrom(addMessagePart, source)
+            FindAnnotatedMessageParts.on(source, addMessagePart)
         }
         addMessagePart(
-            "duration",
+            root.durationMs,
             scope.durationMs?.let { "$it ms" } ?: "N/A",
             MessagePartOptions(label = "Duration"),
         )
@@ -100,7 +96,17 @@ class ActivityLogEntryFactory private constructor(
             val name: String,
             val value: Any?,
             val options: MessagePartOptions,
-        )
+        ) {
+            val text: String
+                get() {
+                    val label = options.label?.ifEmpty { name }
+                    val valueFormatted = options.format
+                        ?.let { String.format(Locale.ROOT, it, value) }
+                        ?: value.toString()
+
+                    return label?.let { "$it${options.separator}$valueFormatted" } ?: valueFormatted
+                }
+        }
 
         fun push(
             name: String,
@@ -110,8 +116,17 @@ class ActivityLogEntryFactory private constructor(
             this[name] = Entry(name, value, options)
         }
 
+        fun push(
+            name: PropertyName,
+            value: Any?,
+            options: MessagePartOptions = MessagePartOptions(),
+        ) = push(name.toString(), value, options)
+
         fun pop(name: String): Entry? =
             remove(name)
+
+        fun pop(name: PropertyName): Entry? =
+            pop(name.toString())
     }
 
     class MessageContext internal constructor(
@@ -121,22 +136,18 @@ class ActivityLogEntryFactory private constructor(
     )
 
     class Builder {
-        var root: PropertyName = PropertyName().wiretap.activity
+        var root: PropertyName = PropertyName().wiretap
 
         private var arrangeMessageParts: MessageContext.() -> List<MessagePartMap.Entry> = {
             // core: Priority parts are popped first; remaining parts are appended by name.
             listOfNotNull(
-                parts.pop("activity"), parts.pop("duration"),
+                parts.pop(root.activity.name),
+                parts.pop(root.activity.durationMs),
             ) + parts.entries.sortedBy { it.key }.map { it.value }
         }
 
         private var joinMessageParts: List<MessagePartMap.Entry>.() -> String = {
-            joinToString("; ") { entry ->
-                val label = entry.options.label?.ifEmpty { entry.name }
-                label
-                    ?.let { "$it${entry.options.separator}${entry.value}" }
-                    ?: entry.value.toString()
-            }
+            joinToString("; ") { it.text }
         }
 
         fun arrangeMessageParts(
@@ -151,7 +162,7 @@ class ActivityLogEntryFactory private constructor(
             joinMessageParts = join
         }
 
-        fun build(): ActivityLogEntryFactory = ActivityLogEntryFactory(
+        fun build(): CreateLogEntry = CreateLogEntry(
             root = root,
             arrangeMessageParts = arrangeMessageParts,
             joinMessageParts = joinMessageParts,
@@ -159,18 +170,10 @@ class ActivityLogEntryFactory private constructor(
     }
 }
 
-fun activityLogEntryFactory(
-    configure: ActivityLogEntryFactory.Builder.() -> Unit = {},
-): ActivityLogEntryFactory =
-    ActivityLogEntryFactory.Builder().apply(configure).build()
-
-private fun addLogPropertiesFrom(
-    source: Any?,
-    root: PropertyName,
-    addLogProperty: AddLogProperty,
-) {
-    (source as? LogPropertySource)?.logProperties(root, addLogProperty)
-}
+fun createLogEntryBy(
+    configure: CreateLogEntry.Builder.() -> Unit = {},
+): CreateLogEntry =
+    CreateLogEntry.Builder().apply(configure).build()
 
 private fun ActivityScope<*>.ancestors(): Sequence<ActivityScope<*>> =
     generateSequence(parent) { it.parent }

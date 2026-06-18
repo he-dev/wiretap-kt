@@ -43,7 +43,7 @@ abstract class ActivityScope<A : Activity>(
     }
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        //add("activity", "${activity.name}[${get(root.status.code)}]")
+        //add(root.name, "${activity.name}[${get(root.status.code)}]")
     }
 
     override fun close() {
@@ -94,7 +94,7 @@ open class BuzzScope<A : Activity.Buzz>(
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
         super.messageParts(root, get, add)
         add(
-            "duration",
+            root.durationMs,
             "${get(root.durationMs)} ms",
             MessagePartOptions(label = "Duration"),
         )
@@ -213,7 +213,7 @@ class SnapScope<A : Activity.Snap>(
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
         super.messageParts(root, get, add)
-        add("duration", "N/A", MessagePartOptions(label = "Duration"))
+        add(root.durationMs, "N/A", MessagePartOptions(label = "Duration"))
     }
 
     companion object {

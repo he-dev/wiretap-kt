@@ -11,7 +11,7 @@ object AnnotatedStateItems {
                 // core: Cascade filters state when ancestor activities contribute to a descendant log.
                 if (cascadingOnly && !property.annotation.cascade) continue
 
-                val name = property.annotation.name.ifBlank { property.name }
+                val name = property.annotation.name.nullIfUnset() ?: property.name
                 push(prefix.append(name), property.value(feed))
             }
         }

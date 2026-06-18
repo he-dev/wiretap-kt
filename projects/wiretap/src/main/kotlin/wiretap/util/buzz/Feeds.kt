@@ -8,13 +8,26 @@ fun interface AddLogProperty {
 data class MessagePartOptions(
     val label: String? = null,
     val separator: String = ": ",
+    val format: String? = null,
 )
 
 fun interface AddMessagePart {
     fun push(name: String, value: Any?, options: MessagePartOptions)
 
+    fun push(
+        name: PropertyName,
+        value: Any?,
+        options: MessagePartOptions = MessagePartOptions(),
+    ) = push(name.toString(), value, options)
+
     operator fun invoke(
         name: String,
+        value: Any?,
+        options: MessagePartOptions = MessagePartOptions(),
+    ) = push(name, value, options)
+
+    operator fun invoke(
+        name: PropertyName,
         value: Any?,
         options: MessagePartOptions = MessagePartOptions(),
     ) = push(name, value, options)

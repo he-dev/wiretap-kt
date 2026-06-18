@@ -2,7 +2,7 @@ package wiretap.util
 
 import wiretap.util.buzz.PropertyName
 
-data class ActivityLogEntry(
+data class LogEntry(
     val level: ActivityStatusLevel,
     val message: String,
     val properties: Map<String, Any?>,

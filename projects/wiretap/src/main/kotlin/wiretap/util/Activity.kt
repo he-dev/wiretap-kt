@@ -28,7 +28,7 @@ abstract class Activity : LogPropertySource, MessagePartSource {
     }
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        add("activity", "${name}[${get(root.status.code)}]")
+        add(root.name, "${name}[${get(root.status.code)}]")
     }
 
     abstract class Buzz : Activity()

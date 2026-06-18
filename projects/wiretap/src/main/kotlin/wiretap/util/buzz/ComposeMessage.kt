@@ -1,6 +1,6 @@
 package wiretap.util.buzz
 
-import wiretap.util.AnnotatedMessageParts
+import java.util.Locale
 
 fun interface ComposeMessage {
     operator fun invoke(
@@ -31,7 +31,7 @@ class ComposeMessageByAppending(
             if (source is MessagePartSource) {
                 source.messageParts(root, getLogProperty, addMessagePart)
             }
-            AnnotatedMessageParts.addFrom(addMessagePart, source)
+            FindAnnotatedMessageParts.on(source, addMessagePart)
         }
 
         return messageParts.joinToString(separator)
@@ -39,6 +39,9 @@ class ComposeMessageByAppending(
 
     private fun render(name: String, value: Any, options: MessagePartOptions): String {
         val label = options.label?.ifEmpty { name }
-        return label?.let { "$it${options.separator}$value" } ?: value.toString()
+        val formattedValue = options.format
+            ?.let { String.format(Locale.ROOT, it, value) }
+            ?: value.toString()
+        return label?.let { "$it${options.separator}$formattedValue" } ?: formattedValue
     }
 }

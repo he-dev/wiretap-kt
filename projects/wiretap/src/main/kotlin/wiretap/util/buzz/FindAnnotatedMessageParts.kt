@@ -1,12 +1,11 @@
-package wiretap.util
+package wiretap.util.buzz
 
-import wiretap.util.buzz.FindAnnotatedProperties
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.MessagePartOptions
+import wiretap.util.MessagePart
+import wiretap.util.nullIfUnset
 
-object AnnotatedMessageParts {
+object FindAnnotatedMessageParts {
 
-    fun addFrom(addMessagePart: AddMessagePart, source: Any?) {
+    fun on(source: Any?, addMessagePart: AddMessagePart) {
         if (source == null) return
 
         for (property in FindAnnotatedProperties.on<MessagePart>(source)) {
@@ -17,8 +16,9 @@ object AnnotatedMessageParts {
                 property.name,
                 value,
                 MessagePartOptions(
-                    label = annotation.label.takeUnless { it == MessagePartNoLabel },
+                    label = annotation.label.nullIfUnset(),
                     separator = annotation.separator,
+                    format = annotation.format.nullIfUnset(),
                 ),
             )
         }

@@ -8,24 +8,29 @@ import wiretap.util.ActivityLogRecord
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatus
 import wiretap.util.ActivityStatusLevel
+import wiretap.util.MessagePart
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
-import wiretap.util.activityLogEntryFactory
+import wiretap.util.buzz.MessagePartOptions
+import wiretap.util.buzz.createLogEntryBy
 import wiretap.util.buzz.PropertyName
+import wiretap.util.buzz.activity
+import wiretap.util.buzz.durationMs
+import wiretap.util.buzz.name
 import wiretap.util.buzz.state
 
-class ActivityLogEntryFactoryTest {
+class CreateLogEntryTest {
     @Test
     fun createsFinalEntryWithCustomMessageComposition() {
         val exception = IllegalStateException("broken")
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
         val status = EntryActivity.Fail(exception)
-        val factory = activityLogEntryFactory {
+        val factory = createLogEntryBy {
             arrangeMessageParts {
                 parts.push(
                     "record",
-                    properties[root.state.append("recordId").toString()],
-                    wiretap.util.buzz.MessagePartOptions(
+                    properties[root.activity.state.append("recordId").toString()],
+                    MessagePartOptions(
                         label = "Record",
                         separator = " ",
                     ),
@@ -37,7 +42,7 @@ class ActivityLogEntryFactoryTest {
             }
         }
 
-        val entry = factory.create(scope, status)
+        val entry = factory.from(scope, status)
 
         assertEquals(ActivityStatusLevel.Error, entry.level)
         assertEquals("Record customer-001 failed", entry.message)
@@ -49,11 +54,11 @@ class ActivityLogEntryFactoryTest {
     @Test
     fun allowsNamespaceConfigurationWithoutReplacingCollection() {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
-        val factory = activityLogEntryFactory {
-            root = PropertyName("application", "activity")
+        val factory = createLogEntryBy {
+            root = PropertyName("application")
         }
 
-        val entry = factory.create(scope, EntryActivity.Fail(IllegalStateException()))
+        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException()))
 
         assertEquals("customer-001", entry["application.activity.state.recordId"])
         assertEquals("Fail", entry["application.activity.status.code"])
@@ -62,12 +67,12 @@ class ActivityLogEntryFactoryTest {
     @Test
     fun arrangesCollectedMessagePartsBeforeJoining() {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
-        val factory = activityLogEntryFactory {
+        val factory = createLogEntryBy {
             arrangeMessageParts {
                 parts.push("prefix", "Prefix")
                 listOfNotNull(
-                    parts.pop("activity"),
-                    parts.pop("duration"),
+                    parts.pop(root.activity.name),
+                    parts.pop(root.activity.durationMs),
                 ) + parts.entries.sortedBy { it.key }.map { it.value }
             }
             joinMessageParts {
@@ -75,10 +80,23 @@ class ActivityLogEntryFactoryTest {
             }
         }
 
-        val entry = factory.create(scope, EntryActivity.Fail(IllegalStateException("broken")))
+        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException("broken")))
 
         assertEquals(
             "EntryActivity[Fail] | N/A | broken | Prefix",
+            entry.message,
+        )
+    }
+
+    @Test
+    fun formatsAnnotatedMessagePartValues() {
+        val scope = SnapScope(logger, FormattedActivity(12.345), parent = null)
+        val factory = createLogEntryBy()
+
+        val entry = factory.from(scope, FormattedActivity.Okay())
+
+        assertEquals(
+            "FormattedActivity[Okay]; Duration: N/A; Rate: 12.35",
             entry.message,
         )
     }
@@ -88,6 +106,13 @@ class ActivityLogEntryFactoryTest {
         val recordId: String,
     ) : Activity.Snap() {
         class Fail(exception: Throwable) : ActivityStatus.Fail<EntryActivity>(exception)
+    }
+
+    class FormattedActivity(
+        @MessagePart(label = "Rate", format = "%.2f")
+        val rate: Double,
+    ) : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<FormattedActivity>()
     }
 
     private companion object {

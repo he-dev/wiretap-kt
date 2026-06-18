@@ -5,6 +5,7 @@ import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.MessagePartSource
 import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.FindAnnotatedMessageParts
 import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.code
 import wiretap.util.buzz.role
@@ -44,7 +45,7 @@ abstract class ActivityStatus<A : Activity>(
     }
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        AnnotatedMessageParts.addFrom(add, this)
+        FindAnnotatedMessageParts.on(this, add)
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {
@@ -67,7 +68,7 @@ abstract class ActivityStatus<A : Activity>(
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
 
         override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            exception?.message?.let { add("exception", it) }
+            exception?.message?.let { add(root.status.append("exception"), it) }
         }
     }
 
@@ -79,7 +80,7 @@ abstract class ActivityStatus<A : Activity>(
         override val level: ActivityStatusLevel = ActivityStatusLevel.Warning
 
         override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            add("reason", reason)
+            add(root.status.append("reason"), reason)
         }
     }
 }
