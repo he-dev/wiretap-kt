@@ -4,8 +4,8 @@ import wiretap.util.AnnotatedMessageParts
 
 fun interface ComposeMessage {
     operator fun invoke(
-        stateItems: Map<String, Any?>,
-        vararg feeds: Any?,
+        logProperties: Map<String, Any?>,
+        vararg sources: Any?,
     ): String
 }
 
@@ -13,28 +13,28 @@ class ComposeMessageByAppending(
     private val separator: String = "; ",
 ) : ComposeMessage {
     override fun invoke(
-        stateItems: Map<String, Any?>,
-        vararg feeds: Any?,
+        logProperties: Map<String, Any?>,
+        vararg sources: Any?,
     ): String {
         val root = PropertyName().wiretap.activity
-        val get = GetStateItem { key -> stateItems[key] }
-        val parts = mutableListOf<String>()
+        val getLogProperty = GetLogProperty { key -> logProperties[key] }
+        val messageParts = mutableListOf<String>()
 
-        val push = PushMessagePart { message, args ->
-            if (message != null) {
-                parts += render(message, args)
+        val addMessagePart = AddMessagePart { message, args ->
+            message?.let {
+                messageParts += render(it, args)
             }
         }
 
-        for (feed in feeds) {
+        for (source in sources) {
             // core: Explicit message feeds run before annotated parts so custom text can lead the message.
-            if (feed is MessagePartFeed) {
-                feed.messageParts(root, get, push)
+            if (source is MessagePartSource) {
+                source.messageParts(root, getLogProperty, addMessagePart)
             }
-            AnnotatedMessageParts.pushFrom(root, push, feed)
+            AnnotatedMessageParts.addFrom(addMessagePart, source)
         }
 
-        return parts.joinToString(separator)
+        return messageParts.joinToString(separator)
     }
 
     private fun render(message: String, args: Array<out Any?>): String =

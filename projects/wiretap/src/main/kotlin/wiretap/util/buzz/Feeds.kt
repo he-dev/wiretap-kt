@@ -1,27 +1,25 @@
 package wiretap.util.buzz
 
-fun interface PushLogProperty {
+fun interface AddLogProperty {
     operator fun invoke(key: String, value: Any?)
-
-    operator fun invoke(key: PropertyName, value: Any?) =
-        invoke(key.toString(), value)
+    operator fun invoke(key: PropertyName, value: Any?) = invoke(key.toString(), value)
 }
 
-fun interface PushMessagePart {
+fun interface AddMessagePart {
     operator fun invoke(message: String?, vararg args: Any?)
 }
 
-fun interface GetStateItem {
+fun interface GetLogProperty {
     operator fun invoke(key: String): Any?
 
     operator fun invoke(key: PropertyName): Any? =
         invoke(key.toString())
 }
 
-interface LogPropertyFeed {
-    fun logProperties(root: PropertyName, push: PushLogProperty)
+interface LogPropertySource {
+    fun logProperties(root: PropertyName, add: AddLogProperty)
 }
 
-interface MessagePartFeed {
-    fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart)
+interface MessagePartSource {
+    fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart)
 }

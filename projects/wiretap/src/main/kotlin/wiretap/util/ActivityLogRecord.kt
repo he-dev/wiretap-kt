@@ -1,10 +1,9 @@
 package wiretap.util
 
 import wiretap.util.buzz.ComposeMessageByAppending
-import wiretap.util.buzz.MessagePartFeed
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.PushLogProperty
-import wiretap.util.buzz.LogPropertyFeed
+import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.activity
 import wiretap.util.buzz.state
 import wiretap.util.buzz.wiretap
@@ -22,9 +21,9 @@ data class ActivityLogRecord(
             val root = PropertyName().wiretap.activity
             val composeMessage = ComposeMessageByAppending()
 
-            val pushState = PushLogProperty { key, value ->
-                if (value != null) {
-                    state[key] = value
+            val pushState = AddLogProperty { key, value ->
+                value?.let { 
+                    state[key] = it
                 }
             }
 
@@ -39,7 +38,7 @@ data class ActivityLogRecord(
             scope.logProperties(root, pushState)
             status.logProperties(root, pushState)
 
-            if (scope.activity is LogPropertyFeed) {
+            if (scope.activity is LogPropertySource) {
                 scope.activity.logProperties(root, pushState)
             }
 

@@ -17,25 +17,25 @@ private val wiretap = ActivityLogger.getLogger("wiretap.demo")
 fun main() {
     logger.info("{} demo", Wiretap.name)
 
-    wiretap.beginBuzz(ImportDocument("customers.csv")).use { import ->
-        wiretap.beginBuzz(ParseDocument("csv")).use { parse ->
-            parse.setStatus(ParseDocument.Okay(recordsParsed = 3))
+    wiretap.beginBuzz(ImportDocument("customers.csv")) {
+        wiretap.beginBuzz(ParseDocument("csv")) {
+            setStatus(ParseDocument.Okay(recordsParsed = 3))
         }
 
-        import.setStatus(ImportDocument.Okay(recordsSaved = 2))
+        setStatus(ImportDocument.Okay(recordsSaved = 2))
         wiretap.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
     }
 
-    wiretap.beginBulk(DeleteFiles()).use { bulk ->
-        bulk.beginItem(DeleteFile("/tmp/one.csv")).use { item ->
-            item.setStatus(DeleteFile.Okay())
+    wiretap.beginBulk(DeleteFiles()) {
+        beginItem(DeleteFile("/tmp/one.csv")) {
+            setStatus(DeleteFile.Okay())
         }
 
-        bulk.beginItem(DeleteFile("/tmp/two.tmp")).use { item ->
-            item.setStatus(DeleteFile.Fail(IllegalStateException("Temporary files are skipped.")))
+        beginItem(DeleteFile("/tmp/two.tmp")) {
+            setStatus(DeleteFile.Fail(IllegalStateException("Temporary files are skipped.")))
         }
 
-        bulk.setStatus(DeleteFiles.Okay())
+        setStatus(DeleteFiles.Okay())
     }
 }
 
@@ -73,4 +73,45 @@ class DeleteFile(private val path: String) : Activity.Buzz() {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)
+}
+
+enum class AppMode {
+    Preview,
+    Regular
+}
+
+fun <R> dbContext(mode: AppMode, block: ExecuteQuery<R>.() -> Unit): R {
+    val query = ExecuteQuery<R>(mode)
+    query.block()
+    return query()
+}
+
+class Connection;
+
+class ExecuteQuery<R>(val mode: AppMode) {
+
+    private var regularBlock: (() -> R) = { throw IllegalStateException("No regular block configured.") }
+    private var previewBlock: (() -> R) = regularBlock
+
+    operator fun invoke(): R {
+        return when (mode) {
+            AppMode.Preview -> previewBlock()
+            AppMode.Regular -> regularBlock()
+        }
+    }
+
+    fun preview(block: () -> R): Unit {
+        previewBlock = block
+    }
+
+    fun regular(block: (Connection) -> R): Unit {
+        regularBlock = { block(Connection()) }
+    }
+}
+
+fun dbContextDemo() {
+    val result = dbContext(AppMode.Preview) {
+        preview { 1 }
+        regular { connection -> 2 }
+    }
 }

@@ -1,11 +1,11 @@
 package wiretap.util
 
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.GetStateItem
-import wiretap.util.buzz.MessagePartFeed
-import wiretap.util.buzz.PushMessagePart
-import wiretap.util.buzz.PushLogProperty
-import wiretap.util.buzz.LogPropertyFeed
+import wiretap.util.buzz.GetLogProperty
+import wiretap.util.buzz.MessagePartSource
+import wiretap.util.buzz.AddMessagePart
+import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.code
 import wiretap.util.buzz.role
 import wiretap.util.buzz.status
@@ -32,19 +32,19 @@ interface Last : ActivityStatusRole {
 
 abstract class ActivityStatus<A : Activity>(
     open val exception: Throwable? = null,
-) : LogPropertyFeed, MessagePartFeed {
+) : LogPropertySource, MessagePartSource {
     open val code: String
         get() = this::class.simpleName ?: "Status"
 
     open val level: ActivityStatusLevel = ActivityStatusLevel.Info
 
-    override fun logProperties(root: PropertyName, push: PushLogProperty) {
-        push(root.status.code, code)
-        push(root.status.role, (this as? ActivityStatusRole)?.role)
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        add(root.status.code, code)
+        add(root.status.role, (this as? ActivityStatusRole)?.role)
     }
 
-    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-        AnnotatedMessageParts.pushFrom(root.status, push, this)
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        AnnotatedMessageParts.addFrom(add, this)
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {
@@ -66,8 +66,8 @@ abstract class ActivityStatus<A : Activity>(
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
 
-        override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-            exception?.message?.let { push(it) }
+        override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+            exception?.message?.let { add(it) }
         }
     }
 
@@ -78,8 +78,8 @@ abstract class ActivityStatus<A : Activity>(
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Warning
 
-        override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-            push(reason)
+        override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+            add(reason)
         }
     }
 }

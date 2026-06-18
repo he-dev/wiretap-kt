@@ -2,12 +2,12 @@ package wiretap.util
 
 import kotlin.time.TimeSource
 import wiretap.meta.ActivityScopeAmbient
-import wiretap.util.buzz.GetStateItem
-import wiretap.util.buzz.LogPropertyFeed
-import wiretap.util.buzz.MessagePartFeed
+import wiretap.util.buzz.GetLogProperty
+import wiretap.util.buzz.LogPropertySource
+import wiretap.util.buzz.MessagePartSource
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.PushLogProperty
-import wiretap.util.buzz.PushMessagePart
+import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.code
 import wiretap.util.buzz.depth
 import wiretap.util.buzz.durationMs
@@ -17,20 +17,30 @@ import wiretap.util.buzz.role
 import wiretap.util.buzz.status
 import wiretap.util.buzz.tags
 
-interface StackItem {
-    fun <A : Activity.Buzz> push(
-        logger: ActivityLogger,
-        activity: A,
-        parent: ActivityScope<*>? = ActivityScope.current(),
-        statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions
-    ): ActivityScope<A>
+data class LogContext(
+    val scope: ActivityScope<*>,
+    val activity: Activity,
+    val status: ActivityStatus<*>,
+) : LogPropertySource, MessagePartSource {
+
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        for (source in sequenceOf(scope, activity, status).mapNotNull { it as? LogPropertySource }) {
+            source.logProperties(root, add)
+        }
+    }
+
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        for (source in sequenceOf(scope, activity, status).mapNotNull { it as? MessagePartSource }) {
+            source.messageParts(root, get, add)
+        }
+    }
 }
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
     val activity: A,
     val parent: ActivityScope<*>?,
-) : AutoCloseable, LogPropertyFeed, MessagePartFeed {
+) : AutoCloseable, LogPropertySource, MessagePartSource {
     private var ambient: AutoCloseable? = null
 
     val depth: Int
@@ -58,19 +68,14 @@ abstract class ActivityScope<A : Activity>(
         logger.log(ActivityLogRecord.from(this, status))
     }
 
-    override fun logProperties(root: PropertyName, push: PushLogProperty) {
-        push(root.name, activity.name)
-        push(root.role, role)
-        push(root.depth, depth)
-        push(root.path, path)
-
-        if (activity.tags.isNotEmpty()) {
-            push(root.tags, activity.tags)
-        }
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        add(root.role, role)
+        add(root.depth, depth)
+        add(root.path, path)
     }
 
-    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-        push("${activity.name}[${get(root.status.code)}]")
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        //add("${activity.name}[${get(root.status.code)}]")
     }
 
     override fun close() {
@@ -113,18 +118,18 @@ open class BuzzScope<A : Activity.Buzz>(
         return this
     }
 
-    override fun logProperties(root: PropertyName, push: PushLogProperty) {
-        super.logProperties(root, push)
-        push(root.durationMs, durationMs)
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        super.logProperties(root, add)
+        add(root.durationMs, durationMs)
     }
 
-    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-        super.messageParts(root, get, push)
-        push("Duration: %d ms", get(root.durationMs))
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        super.messageParts(root, get, add)
+        add("Duration: %d ms", get(root.durationMs))
     }
 
     override fun close() {
-        // core: A buzz without an explicit final status is still logged so open scopes cannot disappear silently.
+        // core: A buzz without an explicit final status is still logged, so open scopes cannot disappear silently.
         val status = lastStatus ?: ActivityStatus.Void<A>().also {
             lastStatus = it
         }
@@ -167,9 +172,12 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
         // core: Items report their final status into the parent bulk math instead of owning a separate summary.
         ItemScope.push(logger, activity, parent = this, math, this.activity.itemStatusLogOptions)
 
-    override fun logProperties(root: PropertyName, push: PushLogProperty) {
-        super.logProperties(root, push)
-        math.logProperties(root, push)
+    fun <R> beginItem(activity: I, block: ItemScope<I>.() -> R): R =
+        beginItem(activity).use(block)
+
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        super.logProperties(root, add)
+        math.logProperties(root, add)
     }
 
     companion object {
@@ -231,9 +239,9 @@ class SnapScope<A : Activity.Snap>(
         log(status)
     }
 
-    override fun messageParts(root: PropertyName, get: GetStateItem, push: PushMessagePart) {
-        super.messageParts(root, get, push)
-        push("Duration: N/A")
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        super.messageParts(root, get, add)
+        add("Duration: N/A")
     }
 
     companion object {

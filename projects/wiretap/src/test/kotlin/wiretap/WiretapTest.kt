@@ -25,15 +25,17 @@ class WiretapTest {
 
     @Test
     fun ambientScopeBuildsNestedPath() {
-        logger.beginBuzz(ImportDocument()).use { import ->
-            logger.beginBuzz(ParseDocument()).use { parse ->
-                assertEquals(import, parse.parent)
-                assertEquals(1, parse.depth)
-                assertEquals("ImportDocument/ParseDocument", parse.path)
-                parse.setStatus(ParseDocument.Okay())
+        logger.beginBuzz(ImportDocument()) {
+            val import = this
+
+            logger.beginBuzz(ParseDocument()) {
+                assertEquals(import, parent)
+                assertEquals(1, depth)
+                assertEquals("ImportDocument/ParseDocument", path)
+                setStatus(ParseDocument.Okay())
             }
 
-            import.setStatus(ImportDocument.Okay())
+            setStatus(ImportDocument.Okay())
         }
 
         assertNull(ActivityScope.current())
@@ -46,9 +48,9 @@ class WiretapTest {
         try {
             parent.close()
 
-            logger.beginBuzz(ParseDocument(), parent = parent).use { child ->
-                assertEquals(parent, child.parent)
-                assertEquals("ImportDocument/ParseDocument", child.path)
+            logger.beginBuzz(ParseDocument(), parent = parent) {
+                assertEquals(parent, this.parent)
+                assertEquals("ImportDocument/ParseDocument", path)
             }
         } finally {
             parent.close()
@@ -60,8 +62,8 @@ class WiretapTest {
         val records = mutableListOf<ActivityLogRecord>()
         val logger = TestActivityLogger(records)
 
-        logger.beginBuzz(ImportDocument()).use { scope ->
-            scope.setStatus(ImportDocument.Okay())
+        logger.beginBuzz(ImportDocument()) {
+            setStatus(ImportDocument.Okay())
         }
 
         assertEquals(listOf("Ready", "Okay"), records.map { it.status.code })
@@ -69,20 +71,32 @@ class WiretapTest {
     }
 
     @Test
+    fun beginBuzzBlockClosesScopeAndReturnsValue() {
+        val result = logger.beginBuzz(ImportDocument()) {
+            assertEquals(this, ActivityScope.current())
+            setStatus(ImportDocument.Okay())
+            "done"
+        }
+
+        assertEquals("done", result)
+        assertNull(ActivityScope.current())
+    }
+
+    @Test
     fun bulkCountsItemStatuses() {
         val records = mutableListOf<ActivityLogRecord>()
         val logger = TestActivityLogger(records)
 
-        logger.beginBulk(DeleteFiles()).use { bulk ->
-            bulk.beginItem(DeleteFile()).use { item ->
-                item.setStatus(DeleteFile.Okay())
+        logger.beginBulk(DeleteFiles()) {
+            beginItem(DeleteFile()) {
+                setStatus(DeleteFile.Okay())
             }
 
-            bulk.beginItem(DeleteFile()).use { item ->
-                item.setStatus(DeleteFile.Fail())
+            beginItem(DeleteFile()) {
+                setStatus(DeleteFile.Fail())
             }
 
-            bulk.setStatus(DeleteFiles.Okay())
+            setStatus(DeleteFiles.Okay())
         }
 
         val final = records.last()
@@ -122,13 +136,13 @@ class WiretapTest {
         val records = mutableListOf<ActivityLogRecord>()
         val logger = TestActivityLogger(records)
 
-        logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")).use { import ->
-            logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")).use { parse ->
+        logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")) {
+            logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")) {
                 logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
-                parse.setStatus(ParseDocumentWithState.Okay())
+                setStatus(ParseDocumentWithState.Okay())
             }
 
-            import.setStatus(ImportDocumentWithState.Okay())
+            setStatus(ImportDocumentWithState.Okay())
         }
 
         val snap = records.first { it.scope.activity is SaveRecord }

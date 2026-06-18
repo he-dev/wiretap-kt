@@ -1,11 +1,11 @@
 package wiretap.util
 
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.PushLogProperty
-import wiretap.util.buzz.LogPropertyFeed
+import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.state
 
-class BulkMath : LogPropertyFeed {
+class BulkMath : LogPropertySource {
     private val statusCounts = linkedMapOf<String, Int>()
 
     var itemCount: Int = 0
@@ -20,17 +20,17 @@ class BulkMath : LogPropertyFeed {
         this.durationMs += durationMs
 
         val code = status.code.lowercase()
-        statusCounts[code] = statusCounts.getOrDefault(code, 0) + 1
+        statusCounts[code] = statusCounts.getOrElse(code) { 0 } + 1
     }
 
-    override fun logProperties(root: PropertyName, push: PushLogProperty) {
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
         val state = root.state
-        push(state.append("item_count"), itemCount)
-        push(state.append("duration_ms"), durationMs)
+        add(state.append("item_count"), itemCount)
+        add(state.append("duration_ms"), durationMs)
 
         for ((code, count) in statusCounts) {
-            push(state.append("${code}_count"), count)
-            push(state.append("${code}_rate"), count.toDouble() / itemCount)
+            add(state.append("${code}_count"), count)
+            add(state.append("${code}_rate"), count.toDouble() / itemCount)
         }
     }
 }

@@ -13,8 +13,8 @@ class WiretapSlf4jTest {
     fun beginsBuzzWithSlf4jLogger() {
         val adapter = ActivityLogger(NOPLogger.NOP_LOGGER)
 
-        adapter.beginBuzz(TestActivity()).use { scope ->
-            scope.setStatus(TestActivity.Okay())
+        adapter.beginBuzz(TestActivity()) {
+            setStatus(TestActivity.Okay())
         }
 
         assertNotNull(adapter)

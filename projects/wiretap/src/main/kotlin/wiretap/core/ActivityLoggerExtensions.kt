@@ -16,6 +16,12 @@ fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
 ): BuzzScope<A> =
     beginBuzz(activity, ActivityScope.current())
 
+fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
+    activity: A,
+    block: BuzzScope<A>.() -> R,
+): R =
+    beginBuzz(activity).use(block)
+
 fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
@@ -23,10 +29,24 @@ fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
 ): BuzzScope<A> =
     BuzzScope.push(this, activity, parent, statusLogOptions)
 
+fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
+    activity: A,
+    parent: ActivityScope<*>?,
+    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    block: BuzzScope<A>.() -> R,
+): R =
+    beginBuzz(activity, parent, statusLogOptions).use(block)
+
 fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     activity: B,
 ): BulkScope<B, I> =
     beginBulk(activity, ActivityScope.current())
+
+fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
+    activity: B,
+    block: BulkScope<B, I>.() -> R,
+): R =
+    beginBulk(activity).use(block)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     activity: B,
@@ -34,6 +54,14 @@ fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
 ): BulkScope<B, I> =
     BulkScope.push(this, activity, parent, statusLogOptions)
+
+fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
+    activity: B,
+    parent: ActivityScope<*>?,
+    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    block: BulkScope<B, I>.() -> R,
+): R =
+    beginBulk(activity, parent, statusLogOptions).use(block)
 
 fun <A : Activity.Snap> ActivityLogger.logSnap(
     activity: A,
