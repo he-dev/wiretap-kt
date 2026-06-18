@@ -1,8 +1,8 @@
 package wiretap.util
 
 import wiretap.util.buzz.FindAnnotatedProperties
-import wiretap.util.buzz.PropertyName
 import wiretap.util.buzz.AddMessagePart
+import wiretap.util.buzz.MessagePartOptions
 
 object AnnotatedMessageParts {
 
@@ -13,12 +13,14 @@ object AnnotatedMessageParts {
             val value = property.value(source) ?: continue
             val annotation = property.annotation
 
-            // core: Null-label sentinel means no label; empty label means use the property name.
-            when (annotation.label) {
-                MessagePartNoLabel -> addMessagePart("%s", value)
-                "" -> addMessagePart("${property.name}${annotation.separator}%s", value)
-                else -> addMessagePart("${annotation.label}${annotation.separator}%s", value)
-            }
+            addMessagePart(
+                property.name,
+                value,
+                MessagePartOptions(
+                    label = annotation.label.takeUnless { it == MessagePartNoLabel },
+                    separator = annotation.separator,
+                ),
+            )
         }
     }
 }

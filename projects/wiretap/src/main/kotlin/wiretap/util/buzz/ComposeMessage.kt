@@ -20,9 +20,9 @@ class ComposeMessageByAppending(
         val getLogProperty = GetLogProperty { key -> logProperties[key] }
         val messageParts = mutableListOf<String>()
 
-        val addMessagePart = AddMessagePart { message, args ->
-            message?.let {
-                messageParts += render(it, args)
+        val addMessagePart = AddMessagePart { name, value, options ->
+            value?.let {
+                messageParts += render(name, it, options)
             }
         }
 
@@ -37,10 +37,8 @@ class ComposeMessageByAppending(
         return messageParts.joinToString(separator)
     }
 
-    private fun render(message: String, args: Array<out Any?>): String =
-        if (args.isEmpty()) {
-            message
-        } else {
-            message.format(*args)
-        }
+    private fun render(name: String, value: Any, options: MessagePartOptions): String {
+        val label = options.label?.ifEmpty { name }
+        return label?.let { "$it${options.separator}$value" } ?: value.toString()
+    }
 }

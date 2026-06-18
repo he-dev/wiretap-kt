@@ -5,8 +5,19 @@ fun interface AddLogProperty {
     operator fun invoke(key: PropertyName, value: Any?) = invoke(key.toString(), value)
 }
 
+data class MessagePartOptions(
+    val label: String? = null,
+    val separator: String = ": ",
+)
+
 fun interface AddMessagePart {
-    operator fun invoke(message: String?, vararg args: Any?)
+    fun push(name: String, value: Any?, options: MessagePartOptions)
+
+    operator fun invoke(
+        name: String,
+        value: Any?,
+        options: MessagePartOptions = MessagePartOptions(),
+    ) = push(name, value, options)
 }
 
 fun interface GetLogProperty {

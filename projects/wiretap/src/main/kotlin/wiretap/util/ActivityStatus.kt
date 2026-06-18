@@ -67,7 +67,7 @@ abstract class ActivityStatus<A : Activity>(
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
 
         override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            exception?.message?.let { add(it) }
+            exception?.message?.let { add("exception", it) }
         }
     }
 
@@ -79,7 +79,7 @@ abstract class ActivityStatus<A : Activity>(
         override val level: ActivityStatusLevel = ActivityStatusLevel.Warning
 
         override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            add(reason)
+            add("reason", reason)
         }
     }
 }

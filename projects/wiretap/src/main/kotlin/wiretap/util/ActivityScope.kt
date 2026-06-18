@@ -1,40 +1,8 @@
 package wiretap.util
 
-import kotlin.time.TimeSource
 import wiretap.meta.ActivityScopeAmbient
-import wiretap.util.buzz.GetLogProperty
-import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.MessagePartSource
-import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.code
-import wiretap.util.buzz.depth
-import wiretap.util.buzz.durationMs
-import wiretap.util.buzz.name
-import wiretap.util.buzz.path
-import wiretap.util.buzz.role
-import wiretap.util.buzz.status
-import wiretap.util.buzz.tags
-
-data class LogContext(
-    val scope: ActivityScope<*>,
-    val activity: Activity,
-    val status: ActivityStatus<*>,
-) : LogPropertySource, MessagePartSource {
-
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        for (source in sequenceOf(scope, activity, status).mapNotNull { it as? LogPropertySource }) {
-            source.logProperties(root, add)
-        }
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        for (source in sequenceOf(scope, activity, status).mapNotNull { it as? MessagePartSource }) {
-            source.messageParts(root, get, add)
-        }
-    }
-}
+import wiretap.util.buzz.*
+import kotlin.time.TimeSource
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
@@ -75,7 +43,7 @@ abstract class ActivityScope<A : Activity>(
     }
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        //add("${activity.name}[${get(root.status.code)}]")
+        //add("activity", "${activity.name}[${get(root.status.code)}]")
     }
 
     override fun close() {
@@ -125,7 +93,11 @@ open class BuzzScope<A : Activity.Buzz>(
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
         super.messageParts(root, get, add)
-        add("Duration: %d ms", get(root.durationMs))
+        add(
+            "duration",
+            "${get(root.durationMs)} ms",
+            MessagePartOptions(label = "Duration"),
+        )
     }
 
     override fun close() {
@@ -241,7 +213,7 @@ class SnapScope<A : Activity.Snap>(
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
         super.messageParts(root, get, add)
-        add("Duration: N/A")
+        add("duration", "N/A", MessagePartOptions(label = "Duration"))
     }
 
     companion object {
