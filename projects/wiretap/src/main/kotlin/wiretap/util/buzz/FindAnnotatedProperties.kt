@@ -1,6 +1,8 @@
 package wiretap.util.buzz
 
 import java.util.concurrent.ConcurrentHashMap
+import wiretap.util.Configuration
+import wiretap.util.warnAboutNonPublicAnnotatedProperty
 import kotlin.reflect.KAnnotatedElement
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -27,8 +29,10 @@ object FindAnnotatedProperties {
     ): List<AnnotatedProperty<A>> =
         type.memberProperties.mapNotNull { property ->
             val annotation = property.findAnnotation(annotationType) ?: return@mapNotNull null
-            // todo: Warn through the internal logger when an annotated property is not public.
-            if (property.visibility != KVisibility.PUBLIC) return@mapNotNull null
+            if (property.visibility != KVisibility.PUBLIC) {
+                Configuration.diagnosticLogger.warnAboutNonPublicAnnotatedProperty(annotationType, type, property)
+                return@mapNotNull null
+            }
             AnnotatedProperty(annotation, property)
         }
 

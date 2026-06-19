@@ -105,7 +105,7 @@ class ConfigurationTest {
         assertEquals(emptyMap(), diagnostics.single().properties)
         assertEquals(
             "Configuration variant 'missing' requested by ${MisconfiguredActivity::class.java.name} " +
-                "was not found; using the default variant.",
+                "was not found; using the default one.",
             diagnostics.single().message,
         )
     }

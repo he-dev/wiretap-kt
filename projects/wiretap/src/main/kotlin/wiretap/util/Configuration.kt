@@ -62,15 +62,7 @@ object Configuration {
                 ?: return@computeIfAbsent default
 
             variants[Key.Named(name)] ?: default.also {
-                diagnosticLogger.log(
-                    LogEntry(
-                        level = ActivityStatusLevel.Warning,
-                        message =
-                            "Configuration variant '$name' requested by ${activityType.name} was not found; " +
-                                "using the default variant.",
-                        properties = emptyMap(),
-                    ),
-                )
+                diagnosticLogger.warnAboutMissingConfigurationVariant(name, activityType)
             }
         }
 }
