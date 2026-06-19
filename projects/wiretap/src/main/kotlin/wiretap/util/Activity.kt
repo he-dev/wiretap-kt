@@ -1,20 +1,9 @@
 package wiretap.util
 
 import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.MessagePartSource
-import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.code
-import wiretap.util.buzz.depth
-import wiretap.util.buzz.name
-import wiretap.util.buzz.path
-import wiretap.util.buzz.role
-import wiretap.util.buzz.status
-import wiretap.util.buzz.tags
 
-abstract class Activity : LogPropertySource, MessagePartSource {
+abstract class Activity : LogPropertySource {
     open val name: String
         get() = this::class.simpleName!!
 
@@ -25,10 +14,6 @@ abstract class Activity : LogPropertySource, MessagePartSource {
         if (tags.isNotEmpty()) {
             add(root.tags, tags)
         }
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        add(root.name, "${name}[${get(root.status.code)}]")
     }
 
     abstract class Buzz : Activity()

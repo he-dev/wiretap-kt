@@ -2,7 +2,6 @@ package wiretap.util
 
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.FindAnnotatedProperties
-import wiretap.util.buzz.PropertyName
 
 object AnnotatedStateItems {
     fun pushFromSelf(

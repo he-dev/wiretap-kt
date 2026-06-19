@@ -4,7 +4,16 @@ import wiretap.util.LogEntry
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.AnnotatedStateItems
+import wiretap.util.MessagePartOptions
+import wiretap.util.PropertyName
+import wiretap.util.activity
+import wiretap.util.code
+import wiretap.util.durationMs
+import wiretap.util.name
+import wiretap.util.state
+import wiretap.util.status
 import wiretap.util.toSequence
+import wiretap.util.wiretap
 import java.util.Locale
 
 class CreateLogEntry private constructor(
@@ -65,6 +74,11 @@ class CreateLogEntry private constructor(
         val addMessagePart = AddMessagePart { name, value, options ->
             messageParts.push(name, value, options)
         }
+
+        addMessagePart(
+            root.name,
+            "${getLogProperty(root.name)}[${getLogProperty(root.status.code)}]",
+        )
 
         for (source in listOf(scope.activity, status)) {
             (source as? MessagePartSource)?.messageParts(root, getLogProperty, addMessagePart)

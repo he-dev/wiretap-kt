@@ -10,7 +10,12 @@ import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
 import wiretap.util.Configuration
 import wiretap.util.MessagePart
+import wiretap.util.MessagePartOptions
+import wiretap.util.PropertyName
 import wiretap.util.StateItem
+import wiretap.util.buzz.AddMessagePart
+import wiretap.util.buzz.GetLogProperty
+import wiretap.util.buzz.MessagePartSource
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
@@ -40,8 +45,16 @@ fun main() {
     }
 }
 
-class ImportDocument(private val source: String) : Activity.Buzz() {
+class ImportDocument(private val source: String) : Activity.Buzz(), MessagePartSource {
     override val tags: Set<String> = setOf("import")
+
+    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
+        add(
+            root.append("source"),
+            source,
+            MessagePartOptions(label = "Source"),
+        )
+    }
 
     class Okay(val recordsSaved: Int) : ActivityStatus.Okay<ImportDocument>()
 }

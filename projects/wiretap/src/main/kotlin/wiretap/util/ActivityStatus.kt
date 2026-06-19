@@ -1,11 +1,7 @@
 package wiretap.util
 
-import wiretap.util.buzz.PropertyName
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.code
-import wiretap.util.buzz.role
-import wiretap.util.buzz.status
 
 enum class ActivityStatusLevel {
     Info,

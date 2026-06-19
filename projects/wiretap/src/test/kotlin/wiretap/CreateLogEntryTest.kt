@@ -11,13 +11,13 @@ import wiretap.util.MessagePart
 import wiretap.util.LogEntry
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
-import wiretap.util.buzz.MessagePartOptions
+import wiretap.util.MessagePartOptions
 import wiretap.util.buzz.createLogEntryBy
-import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.activity
-import wiretap.util.buzz.durationMs
-import wiretap.util.buzz.name
-import wiretap.util.buzz.state
+import wiretap.util.PropertyName
+import wiretap.util.activity
+import wiretap.util.durationMs
+import wiretap.util.name
+import wiretap.util.state
 
 class CreateLogEntryTest {
     @Test

@@ -1,4 +1,4 @@
-package wiretap.util.buzz
+package wiretap.util
 
 data class PropertyName(
     val parts: List<String> = emptyList(),

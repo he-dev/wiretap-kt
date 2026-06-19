@@ -1,9 +1,7 @@
 package wiretap.util
 
-import wiretap.util.buzz.PropertyName
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.state
 
 class BulkMath : LogPropertySource {
     private val statusCounts = linkedMapOf<String, Int>()

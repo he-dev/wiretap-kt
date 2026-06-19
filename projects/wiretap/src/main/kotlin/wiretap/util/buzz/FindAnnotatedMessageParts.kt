@@ -1,6 +1,7 @@
 package wiretap.util.buzz
 
 import wiretap.util.MessagePart
+import wiretap.util.MessagePartOptions
 import wiretap.util.nullIfUnset
 
 object FindAnnotatedMessageParts {

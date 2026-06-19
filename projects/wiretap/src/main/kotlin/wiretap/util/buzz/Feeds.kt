@@ -1,15 +1,12 @@
 package wiretap.util.buzz
 
+import wiretap.util.MessagePartOptions
+import wiretap.util.PropertyName
+
 fun interface AddLogProperty {
     operator fun invoke(key: String, value: Any?)
     operator fun invoke(key: PropertyName, value: Any?) = invoke(key.toString(), value)
 }
-
-data class MessagePartOptions(
-    val label: String? = null,
-    val separator: String = ": ",
-    val format: String? = null,
-)
 
 fun interface AddMessagePart {
     fun push(name: String, value: Any?, options: MessagePartOptions)

@@ -9,7 +9,7 @@ import wiretap.util.Configuration
 import wiretap.util.LogEntry
 import wiretap.util.StateItem
 import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.PropertyName
+import wiretap.util.PropertyName
 
 class AnnotatedStateItemsTest {
     @Test
