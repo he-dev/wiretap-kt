@@ -9,7 +9,7 @@ import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
-import wiretap.util.ActivityLogRecord
+import wiretap.util.LogEntry
 import wiretap.util.MessagePart
 import wiretap.util.StateItem
 import wiretap.core.logSnap
@@ -59,15 +59,15 @@ class WiretapTest {
 
     @Test
     fun activityLoggerOwnsLifecycleApiAndUsesSink() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.beginBuzz(ImportDocument()) {
             setStatus(ImportDocument.Okay())
         }
 
-        assertEquals(listOf("Ready", "Okay"), records.map { it.status.code })
-        assertEquals(listOf("ImportDocument", "ImportDocument"), records.map { it.scope.activity.name })
+        assertEquals(listOf("Ready", "Okay"), entries.map { it["wiretap.activity.status.code"] })
+        assertEquals(listOf("ImportDocument", "ImportDocument"), entries.map { it["wiretap.activity.name"] })
     }
 
     @Test
@@ -84,8 +84,8 @@ class WiretapTest {
 
     @Test
     fun bulkCountsItemStatuses() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.beginBulk(DeleteFiles()) {
             beginItem(DeleteFile()) {
@@ -99,42 +99,42 @@ class WiretapTest {
             setStatus(DeleteFiles.Okay())
         }
 
-        val final = records.last()
-        assertEquals("DeleteFiles", final.scope.activity.name)
-        assertEquals(2, final.stateItems["wiretap.activity.state.item_count"])
-        assertEquals(1, final.stateItems["wiretap.activity.state.okay_count"])
-        assertEquals(1, final.stateItems["wiretap.activity.state.fail_count"])
+        val final = entries.last()
+        assertEquals("DeleteFiles", final["wiretap.activity.name"])
+        assertEquals(2, final["wiretap.activity.state.item_count"])
+        assertEquals(1, final["wiretap.activity.state.okay_count"])
+        assertEquals(1, final["wiretap.activity.state.fail_count"])
     }
 
     @Test
     fun annotationsFeedStateItemsAndMessageParts() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
 
-        val record = records.single()
-        assertEquals(1, record.stateItems["wiretap.activity.state.rowIndex"])
-        assertEquals("customer-001", record.stateItems["wiretap.activity.state.recordId"])
-        assertEquals("SaveRecord[Okay]; Duration: N/A; Row: 1; Record: customer-001", record.message)
+        val entry = entries.single()
+        assertEquals(1, entry["wiretap.activity.state.rowIndex"])
+        assertEquals("customer-001", entry["wiretap.activity.state.recordId"])
+        assertEquals("SaveRecord[Okay]; Duration: N/A; Record: customer-001; Row: 1", entry.message)
     }
 
     @Test
     fun annotationsOnlyReflectPublicProperties() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.logSnap(PrivateAnnotatedRecord("hidden"), PrivateAnnotatedRecord.Okay())
 
-        val record = records.single()
-        assertNull(record.stateItems["wiretap.activity.state.secret"])
-        assertEquals("PrivateAnnotatedRecord[Okay]; Duration: N/A", record.message)
+        val entry = entries.single()
+        assertNull(entry["wiretap.activity.state.secret"])
+        assertEquals("PrivateAnnotatedRecord[Okay]; Duration: N/A", entry.message)
     }
 
     @Test
     fun stateItemsCanCascadeFromParentActivities() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")) {
             logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")) {
@@ -145,22 +145,22 @@ class WiretapTest {
             setStatus(ImportDocumentWithState.Okay())
         }
 
-        val snap = records.first { it.scope.activity is SaveRecord }
-        assertEquals("customers.csv", snap.stateItems["wiretap.activity.state.source"])
-        assertEquals("csv", snap.stateItems["wiretap.activity.state.documentType"])
-        assertNull(snap.stateItems["wiretap.activity.state.localOnly"])
+        val snap = entries.first { it["wiretap.activity.name"] == "SaveRecord" }
+        assertEquals("customers.csv", snap["wiretap.activity.state.source"])
+        assertEquals("csv", snap["wiretap.activity.state.documentType"])
+        assertNull(snap["wiretap.activity.state.localOnly"])
     }
 
     @Test
     fun messagePartLabelsCanBeOmittedDefaultedOrAliased() {
-        val records = mutableListOf<ActivityLogRecord>()
-        val logger = TestActivityLogger(records)
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
 
         logger.logSnap(MessagePartLabelCase("alpha", "bravo", "charlie"), MessagePartLabelCase.Okay())
 
         assertEquals(
-            "MessagePartLabelCase[Okay]; Duration: N/A; alpha; defaultLabel: bravo; Alias: charlie",
-            records.single().message,
+            "MessagePartLabelCase[Okay]; Duration: N/A; Alias: charlie; defaultLabel: bravo; alpha",
+            entries.single().message,
         )
     }
 
@@ -236,10 +236,10 @@ class WiretapTest {
     }
 
     private class TestActivityLogger(
-        private val records: MutableList<ActivityLogRecord> = mutableListOf(),
+        private val entries: MutableList<LogEntry> = mutableListOf(),
     ) : ActivityLogger {
-        override fun log(record: ActivityLogRecord) {
-            records += record
+        override fun log(entry: LogEntry) {
+            entries += entry
         }
     }
 }

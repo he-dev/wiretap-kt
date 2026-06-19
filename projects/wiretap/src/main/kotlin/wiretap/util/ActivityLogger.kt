@@ -1,9 +1,9 @@
 package wiretap.util
 
 interface ActivityLogger {
-    fun log(record: ActivityLogRecord)
+    fun log(entry: LogEntry)
 
     object Noop : ActivityLogger {
-        override fun log(record: ActivityLogRecord) = Unit
+        override fun log(entry: LogEntry) = Unit
     }
 }

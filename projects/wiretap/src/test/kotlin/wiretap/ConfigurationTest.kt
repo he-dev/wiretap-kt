@@ -1,25 +1,32 @@
 package wiretap
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import wiretap.util.Activity
-import wiretap.util.ActivityLogRecord
 import wiretap.util.ActivityLogger
+import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
+import wiretap.util.LogEntry
 import wiretap.util.buzz.createLogEntryBy
 
 class ConfigurationTest {
     @Test
     fun configuresDiagnosticLogger() {
+        val previous = Configuration.diagnosticLogger
         val adapter = object : ActivityLogger {
-            override fun log(record: ActivityLogRecord) = Unit
+            override fun log(entry: LogEntry) = Unit
         }
 
-        val configured = Configuration.logDiagnosticsWith(adapter)
+        try {
+            val configured = Configuration.logDiagnosticsWith(adapter)
 
-        assertSame(Configuration, configured)
-        assertSame(adapter, Configuration.diagnosticLogger)
+            assertSame(Configuration, configured)
+            assertSame(adapter, Configuration.diagnosticLogger)
+        } finally {
+            Configuration.logDiagnosticsWith(previous)
+        }
     }
 
     @Test
@@ -78,9 +85,29 @@ class ConfigurationTest {
 
     @Test
     fun fallsBackWhenNamedVariantIsMissing() {
-        val resolved = Configuration.resolve(MisconfiguredActivity())
+        val diagnostics = mutableListOf<LogEntry>()
+        val previous = Configuration.diagnosticLogger
+        val adapter = object : ActivityLogger {
+            override fun log(entry: LogEntry) {
+                diagnostics += entry
+            }
+        }
+
+        val resolved = try {
+            Configuration.logDiagnosticsWith(adapter)
+            Configuration.resolve(MisconfiguredActivity())
+        } finally {
+            Configuration.logDiagnosticsWith(previous)
+        }
 
         assertSame(Configuration.default, resolved)
+        assertEquals(ActivityStatusLevel.Warning, diagnostics.single().level)
+        assertEquals(emptyMap(), diagnostics.single().properties)
+        assertEquals(
+            "Configuration variant 'missing' requested by ${MisconfiguredActivity::class.java.name} " +
+                "was not found; using the default variant.",
+            diagnostics.single().message,
+        )
     }
 
     private class DefaultActivity : Activity.Snap()

@@ -4,7 +4,6 @@ import wiretap.util.buzz.CreateLogEntry
 import wiretap.util.buzz.createLogEntryBy
 import java.util.concurrent.ConcurrentHashMap
 
-// note: Experimental configuration selection; it is not connected to activity scopes yet.
 object Configuration {
     data class Variant(
         val createLogEntryBy: CreateLogEntry = createLogEntryBy(),
@@ -63,7 +62,15 @@ object Configuration {
                 ?: return@computeIfAbsent default
 
             variants[Key.Named(name)] ?: default.also {
-                // todo: Warn through the diagnostic logger after its contract accepts LogEntry.
+                diagnosticLogger.log(
+                    LogEntry(
+                        level = ActivityStatusLevel.Warning,
+                        message =
+                            "Configuration variant '$name' requested by ${activityType.name} was not found; " +
+                                "using the default variant.",
+                        properties = emptyMap(),
+                    ),
+                )
             }
         }
 }

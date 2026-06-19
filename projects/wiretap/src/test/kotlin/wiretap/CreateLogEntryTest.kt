@@ -4,11 +4,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import wiretap.util.Activity
-import wiretap.util.ActivityLogRecord
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatus
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.MessagePart
+import wiretap.util.LogEntry
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
 import wiretap.util.buzz.MessagePartOptions
@@ -117,7 +117,7 @@ class CreateLogEntryTest {
 
     private companion object {
         val logger = object : ActivityLogger {
-            override fun log(record: ActivityLogRecord) = Unit
+            override fun log(entry: LogEntry) = Unit
         }
     }
 }

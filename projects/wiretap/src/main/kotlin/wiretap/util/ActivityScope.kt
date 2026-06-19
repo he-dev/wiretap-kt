@@ -8,8 +8,9 @@ abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
     val activity: A,
     val parent: ActivityScope<*>?,
-) : AutoCloseable, LogPropertySource, MessagePartSource {
+) : AutoCloseable, LogPropertySource {
     private var ambient: AutoCloseable? = null
+    private val variant = Configuration.resolve(activity)
 
     val depth: Int
         get() = parent?.depth?.plus(1) ?: 0
@@ -33,17 +34,13 @@ abstract class ActivityScope<A : Activity>(
     abstract fun setStatus(status: ActivityStatus<A>);
 
     protected fun log(status: ActivityStatus<A>) {
-        logger.log(ActivityLogRecord.from(this, status))
+        logger.log(variant.createLogEntryBy.from(this, status))
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
         add(root.role, role)
         add(root.depth, depth)
         add(root.path, path)
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        //add(root.name, "${activity.name}[${get(root.status.code)}]")
     }
 
     override fun close() {
@@ -96,15 +93,6 @@ open class BuzzScope<A : Activity.Buzz>(
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
         super.logProperties(root, add)
         add(root.durationMs, durationMs)
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        super.messageParts(root, get, add)
-        add(
-            root.durationMs,
-            "${get(root.durationMs)} ms",
-            MessagePartOptions(label = "Duration"),
-        )
     }
 
     override fun close() {
@@ -216,11 +204,6 @@ class SnapScope<A : Activity.Snap>(
 
     override fun setStatus(status: ActivityStatus<A>) {
         log(status)
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        super.messageParts(root, get, add)
-        add(root.durationMs, "N/A", MessagePartOptions(label = "Duration"))
     }
 
     companion object {

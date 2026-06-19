@@ -1,11 +1,7 @@
 package wiretap.util
 
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.GetLogProperty
-import wiretap.util.buzz.MessagePartSource
-import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.FindAnnotatedMessageParts
 import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.code
 import wiretap.util.buzz.role
@@ -33,7 +29,7 @@ interface Last : ActivityStatusRole {
 
 abstract class ActivityStatus<A : Activity>(
     open val exception: Throwable? = null,
-) : LogPropertySource, MessagePartSource {
+) : LogPropertySource {
     open val code: String
         get() = this::class.simpleName ?: "Status"
 
@@ -42,10 +38,6 @@ abstract class ActivityStatus<A : Activity>(
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
         add(root.status.code, code)
         add(root.status.role, (this as? ActivityStatusRole)?.role)
-    }
-
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        FindAnnotatedMessageParts.on(this, add)
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {
@@ -67,20 +59,17 @@ abstract class ActivityStatus<A : Activity>(
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
 
-        override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            exception?.message?.let { add(root.status.append("exception"), it) }
-        }
+        @MessagePart("Exception")
+        val exceptionMessage: String?
+            get() = exception?.message
     }
 
     class Void<A : Activity>(
+        @MessagePart
         val reason: String = "The activity scope exited without an explicit last status.",
     ) : ActivityStatus<A>(), Last {
         override val code: String = "Void"
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Warning
-
-        override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-            add(root.status.append("reason"), reason)
-        }
     }
 }
