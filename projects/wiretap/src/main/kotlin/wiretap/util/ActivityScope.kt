@@ -57,6 +57,13 @@ abstract class ActivityScope<A : Activity>(
     }
 }
 
+internal fun ActivityScope<*>.toSequence(): Sequence<ActivityScope<*>> =
+    sequence {
+        // core: Root-first traversal lets nearer scopes overwrite ancestor state.
+        parent?.let { yieldAll(it.toSequence()) }
+        yield(this@toSequence)
+    }
+
 open class BuzzScope<A : Activity.Buzz>(
     logger: ActivityLogger,
     activity: A,

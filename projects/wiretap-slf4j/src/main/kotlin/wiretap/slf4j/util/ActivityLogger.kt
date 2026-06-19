@@ -1,9 +1,7 @@
-package wiretap.slf4j.core
+package wiretap.slf4j.util
 
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
-import wiretap.util.Wiretap
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.ActivityLogRecord
@@ -19,14 +17,6 @@ class ActivityLogger(val logger: Logger) : ActivityLogger {
 
         record.status.exception?.let { builder.setCause(it) }
         builder.log(record.message)
-    }
-
-    companion object {
-        fun getLogger(name: String = Wiretap.name): ActivityLogger =
-            ActivityLogger(LoggerFactory.getLogger(name))
-
-        fun getLogger(type: Class<*>): ActivityLogger =
-            ActivityLogger(LoggerFactory.getLogger(type))
     }
 }
 

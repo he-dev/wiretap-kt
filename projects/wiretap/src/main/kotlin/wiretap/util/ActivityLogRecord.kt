@@ -3,7 +3,6 @@ package wiretap.util
 import wiretap.util.buzz.ComposeMessageByAppending
 import wiretap.util.buzz.PropertyName
 import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.activity
 import wiretap.util.buzz.state
 import wiretap.util.buzz.wiretap
@@ -27,22 +26,20 @@ data class ActivityLogRecord(
                 }
             }
 
-            // core: Cascaded parent state is pushed from root to leaf so nearer scopes can override earlier values.
-            scope.parents()
-                .asReversed()
-                .forEach { parent ->
-                    AnnotatedStateItems.pushFrom(root.state, pushState, parent.activity, cascadingOnly = true)
-                }
+            AnnotatedStateItems.pushFromAncestors(
+                root.state,
+                pushState,
+                scope.toSequence().filter { it !== scope }.map { it.activity },
+            )
 
             // core: Scope/status metadata is written before activity annotations so explicit activity state can win.
             scope.logProperties(root, pushState)
             status.logProperties(root, pushState)
 
-            if (scope.activity is LogPropertySource) {
-                scope.activity.logProperties(root, pushState)
-            }
+            scope.activity.logProperties(root, pushState)
 
-            AnnotatedStateItems.pushFrom(root.state, pushState, scope.activity, status)
+            AnnotatedStateItems.pushFromSelf(root.state, pushState, scope.activity)
+            AnnotatedStateItems.pushFromSelf(root.state, pushState, status)
 
             val message = composeMessage(state, scope, scope.activity, status)
 
@@ -56,6 +53,3 @@ data class ActivityLogRecord(
         }
     }
 }
-
-private fun ActivityScope<*>.parents(): List<ActivityScope<*>> =
-    generateSequence(parent) { it.parent }.toList()

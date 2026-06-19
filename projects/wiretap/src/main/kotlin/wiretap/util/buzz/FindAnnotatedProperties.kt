@@ -7,20 +7,19 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.cast
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
 
 object FindAnnotatedProperties {
     private val cache = ConcurrentHashMap<Key, List<AnnotatedProperty<out Annotation>>>()
 
-    inline fun <reified A : Annotation> on(source: Any): List<AnnotatedProperty<A>> =
+    inline fun <reified A : Annotation> on(source: Any): Sequence<AnnotatedProperty<A>> =
         on(source::class, A::class)
 
     @Suppress("UNCHECKED_CAST")
-    fun <A : Annotation> on(type: KClass<*>, annotationType: KClass<A>): List<AnnotatedProperty<A>> =
+    fun <A : Annotation> on(type: KClass<*>, annotationType: KClass<A>): Sequence<AnnotatedProperty<A>> =
         // meta: Reflection is cached per source type and annotation type because log paths can be hot.
-        cache.getOrPut(Key(type, annotationType)) {
+        (cache.getOrPut(Key(type, annotationType)) {
             discover(type, annotationType)
-        } as List<AnnotatedProperty<A>>
+        } as List<AnnotatedProperty<A>>).asSequence()
 
     private fun <A : Annotation> discover(
         type: KClass<*>,
@@ -31,21 +30,7 @@ object FindAnnotatedProperties {
             // todo: Warn through the internal logger when an annotated property is not public.
             if (property.visibility != KVisibility.PUBLIC) return@mapNotNull null
             AnnotatedProperty(annotation, property)
-        }.orderByConstructor(type) { it.property.name }
-
-    private fun <T> List<T>.orderByConstructor(type: KClass<*>, nameOf: (T) -> String): List<T> {
-        // meta: Constructor order preserves data-class declaration order; alphabetical order is only a fallback.
-        val parameterOrder = type.primaryConstructor
-            ?.parameters
-            ?.mapIndexedNotNull { index, parameter -> parameter.name?.let { it to index } }
-            ?.toMap()
-            ?: emptyMap()
-
-        return sortedWith(
-            compareBy<T> { parameterOrder[nameOf(it)] ?: Int.MAX_VALUE }
-                .thenBy(nameOf)
-        )
-    }
+        }
 
     private data class Key(
         val type: KClass<*>,

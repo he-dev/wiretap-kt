@@ -1,0 +1,69 @@
+package wiretap.util
+
+import wiretap.util.buzz.CreateLogEntry
+import wiretap.util.buzz.createLogEntryBy
+import java.util.concurrent.ConcurrentHashMap
+
+// note: Experimental configuration selection; it is not connected to activity scopes yet.
+object Configuration {
+    data class Variant(
+        val createLogEntryBy: CreateLogEntry = createLogEntryBy(),
+    )
+
+    @Target(AnnotationTarget.CLASS)
+    @Retention(AnnotationRetention.RUNTIME)
+    annotation class Use(
+        val variant: String,
+    )
+
+    private sealed interface Key {
+        data object Default : Key
+        data class Named(val value: String) : Key
+    }
+
+    private val variants = ConcurrentHashMap<Key, Variant>().apply {
+        this[Key.Default] = Variant()
+    }
+    private val resolved = ConcurrentHashMap<Class<out Activity>, Variant>()
+
+    @Volatile
+    internal var diagnosticLogger: ActivityLogger = ActivityLogger.Noop
+        private set
+
+    val default: Variant
+        get() = variants.getValue(Key.Default)
+
+    operator fun get(name: String): Variant? =
+        variants[Key.Named(name)]
+
+    fun logDiagnosticsWith(logger: ActivityLogger): Configuration = apply {
+        diagnosticLogger = logger
+    }
+
+    fun setDefault(
+        variant: () -> Variant,
+    ): Configuration = apply {
+        variants[Key.Default] = variant()
+        resolved.clear()
+    }
+
+    fun addNamed(
+        name: String,
+        variant: () -> Variant,
+    ): Configuration = apply {
+        check(variants.putIfAbsent(Key.Named(name), variant()) == null) {
+            "Configuration variant '$name' already exists."
+        }
+        resolved.clear()
+    }
+
+    fun resolve(activity: Activity): Variant =
+        resolved.computeIfAbsent(activity.javaClass) { activityType ->
+            val name = activityType.getAnnotation(Use::class.java)?.variant
+                ?: return@computeIfAbsent default
+
+            variants[Key.Named(name)] ?: default.also {
+                // todo: Warn through the diagnostic logger after its contract accepts LogEntry.
+            }
+        }
+}

@@ -4,6 +4,7 @@ import wiretap.util.LogEntry
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.AnnotatedStateItems
+import wiretap.util.toSequence
 import java.util.Locale
 
 class CreateLogEntry private constructor(
@@ -36,30 +37,19 @@ class CreateLogEntry private constructor(
             value?.let { properties[key] = it }
         }
 
-        // core: Cascaded properties are collected root-first so nearer scopes can override them.
-        scope.ancestors()
-            .toList()
-            .asReversed()
-            .forEach { ancestor ->
-                AnnotatedStateItems.pushFrom(
-                    root.state,
-                    addLogProperty,
-                    ancestor.activity,
-                    cascadingOnly = true,
-                )
-            }
+        AnnotatedStateItems.pushFromAncestors(
+            root.state,
+            addLogProperty,
+            scope.toSequence().filter { it !== scope }.map { it.activity },
+        )
 
         // core: Framework scopes and optional user sources share one stable property feed.
         for (source in sequenceOf(scope, scope.activity, status).mapNotNull { it as? LogPropertySource }) {
             source.logProperties(root, addLogProperty)
         }
 
-        AnnotatedStateItems.pushFrom(
-            root.state,
-            addLogProperty,
-            scope.activity,
-            status,
-        )
+        AnnotatedStateItems.pushFromSelf(root.state, addLogProperty, scope.activity)
+        AnnotatedStateItems.pushFromSelf(root.state, addLogProperty, status)
 
         return properties
     }
@@ -174,6 +164,3 @@ fun createLogEntryBy(
     configure: CreateLogEntry.Builder.() -> Unit = {},
 ): CreateLogEntry =
     CreateLogEntry.Builder().apply(configure).build()
-
-private fun ActivityScope<*>.ancestors(): Sequence<ActivityScope<*>> =
-    generateSequence(parent) { it.parent }

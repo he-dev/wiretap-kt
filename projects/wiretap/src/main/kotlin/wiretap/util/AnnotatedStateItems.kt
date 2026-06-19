@@ -1,19 +1,34 @@
 package wiretap.util
 
+import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.FindAnnotatedProperties
 import wiretap.util.buzz.PropertyName
-import wiretap.util.buzz.AddLogProperty
 
 object AnnotatedStateItems {
-    fun pushFrom(prefix: PropertyName, push: AddLogProperty, vararg feeds: Any, cascadingOnly: Boolean = false) {
-        for (feed in feeds) {
-            for (property in FindAnnotatedProperties.on<StateItem>(feed)) {
-                // core: Cascade filters state when ancestor activities contribute to a descendant log.
-                if (cascadingOnly && !property.annotation.cascade) continue
-
+    fun pushFromSelf(
+        prefix: PropertyName,
+        push: AddLogProperty,
+        source: Any,
+    ) {
+        FindAnnotatedProperties.on<StateItem>(source)
+            .forEach { property ->
                 val name = property.annotation.name.nullIfUnset() ?: property.name
-                push(prefix.append(name), property.value(feed))
+                push(prefix.append(name), property.value(source))
             }
+    }
+
+    fun pushFromAncestors(
+        prefix: PropertyName,
+        push: AddLogProperty,
+        ancestors: Sequence<Any>,
+    ) {
+        ancestors.forEach { source ->
+            FindAnnotatedProperties.on<StateItem>(source)
+                .filter { it.annotation.cascade }
+                .forEach { property ->
+                    val name = property.annotation.name.nullIfUnset() ?: property.name
+                    push(prefix.append(name), property.value(source))
+                }
         }
     }
 }

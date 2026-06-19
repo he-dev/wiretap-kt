@@ -4,29 +4,27 @@ import org.slf4j.LoggerFactory
 import wiretap.util.Wiretap
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
-import wiretap.core.beginBuzz
-import wiretap.core.beginBulk
-import wiretap.core.logSnap
-import wiretap.slf4j.core.ActivityLogger
+import wiretap.slf4j.core.beginBuzz
+import wiretap.slf4j.core.beginBulk
+import wiretap.slf4j.core.logSnap
 import wiretap.util.MessagePart
 import wiretap.util.StateItem
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
-private val wiretap = ActivityLogger.getLogger("wiretap.demo")
 
 fun main() {
     logger.info("{} demo", Wiretap.name)
 
-    wiretap.beginBuzz(ImportDocument("customers.csv")) {
-        wiretap.beginBuzz(ParseDocument("csv")) {
+    logger.beginBuzz(ImportDocument("customers.csv")) {
+        logger.beginBuzz(ParseDocument("csv")) {
             setStatus(ParseDocument.Okay(recordsParsed = 3))
         }
 
         setStatus(ImportDocument.Okay(recordsSaved = 2))
-        wiretap.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
+        logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
     }
 
-    wiretap.beginBulk(DeleteFiles()) {
+    logger.beginBulk(DeleteFiles()) {
         beginItem(DeleteFile("/tmp/one.csv")) {
             setStatus(DeleteFile.Okay())
         }
