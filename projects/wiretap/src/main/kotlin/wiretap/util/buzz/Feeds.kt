@@ -9,19 +9,17 @@ fun interface AddLogProperty {
 }
 
 fun interface AddMessagePart {
-    fun push(name: String, value: Any?, options: MessagePartOptions)
-
     fun push(
         name: PropertyName,
         value: Any?,
-        options: MessagePartOptions = MessagePartOptions(),
-    ) = push(name.toString(), value, options)
+        options: MessagePartOptions,
+    )
 
     operator fun invoke(
         name: String,
         value: Any?,
         options: MessagePartOptions = MessagePartOptions(),
-    ) = push(name, value, options)
+    ) = push(PropertyName(name), value, options)
 
     operator fun invoke(
         name: PropertyName,

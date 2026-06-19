@@ -94,16 +94,16 @@ class CreateLogEntry private constructor(
     }
 
     class MessagePartMap internal constructor(
-        private val entriesByName: MutableMap<String, Entry> = linkedMapOf(),
-    ) : MutableMap<String, MessagePartMap.Entry> by entriesByName {
+        private val entriesByName: MutableMap<PropertyName, Entry> = linkedMapOf(),
+    ) : MutableMap<PropertyName, MessagePartMap.Entry> by entriesByName {
         data class Entry(
-            val name: String,
+            val name: PropertyName,
             val value: Any?,
             val options: MessagePartOptions,
         ) {
             val text: String
                 get() {
-                    val label = options.label?.ifEmpty { name }
+                    val label = options.label?.ifEmpty { name.toString() }
                     val valueFormatted = options.format
                         ?.let { String.format(Locale.ROOT, it, value) }
                         ?: value.toString()
@@ -113,24 +113,15 @@ class CreateLogEntry private constructor(
         }
 
         fun push(
-            name: String,
+            name: PropertyName,
             value: Any?,
             options: MessagePartOptions = MessagePartOptions(),
         ) {
             this[name] = Entry(name, value, options)
         }
 
-        fun push(
-            name: PropertyName,
-            value: Any?,
-            options: MessagePartOptions = MessagePartOptions(),
-        ) = push(name.toString(), value, options)
-
-        fun pop(name: String): Entry? =
-            remove(name)
-
         fun pop(name: PropertyName): Entry? =
-            pop(name.toString())
+            remove(name)
     }
 
     class MessageContext internal constructor(
@@ -147,7 +138,7 @@ class CreateLogEntry private constructor(
             listOfNotNull(
                 parts.pop(root.activity.name),
                 parts.pop(root.activity.durationMs),
-            ) + parts.entries.sortedBy { it.key }.map { it.value }
+            ) + parts.entries.sortedBy { it.key.toString() }.map { it.value }
         }
 
         private var joinMessageParts: List<MessagePartMap.Entry>.() -> String = {

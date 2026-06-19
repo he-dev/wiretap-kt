@@ -28,14 +28,14 @@ class CreateLogEntryTest {
         val factory = createLogEntryBy {
             arrangeMessageParts {
                 parts.push(
-                    "record",
+                    PropertyName("record"),
                     properties[root.activity.state.append("recordId").toString()],
                     MessagePartOptions(
                         label = "Record",
                         separator = " ",
                     ),
                 )
-                listOfNotNull(parts.pop("record"))
+                listOfNotNull(parts.pop(PropertyName("record")))
             }
             joinMessageParts {
                 "Record ${single().value} failed"
@@ -69,11 +69,11 @@ class CreateLogEntryTest {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
         val factory = createLogEntryBy {
             arrangeMessageParts {
-                parts.push("prefix", "Prefix")
+                parts.push(PropertyName("prefix"), "Prefix")
                 listOfNotNull(
                     parts.pop(root.activity.name),
                     parts.pop(root.activity.durationMs),
-                ) + parts.entries.sortedBy { it.key }.map { it.value }
+                ) + parts.entries.sortedBy { it.key.toString() }.map { it.value }
             }
             joinMessageParts {
                 joinToString(" | ") { it.value.toString() }
