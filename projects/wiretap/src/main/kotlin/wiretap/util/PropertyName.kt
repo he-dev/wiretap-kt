@@ -16,6 +16,7 @@ data class PropertyName(
 val PropertyName.wiretap: PropertyName get() = append("wiretap")
 val PropertyName.activity: PropertyName get() = append("activity")
 val PropertyName.state: PropertyName get() = append("state")
+val PropertyName.bulk: PropertyName get() = append("bulk")
 val PropertyName.status: PropertyName get() = append("status")
 val PropertyName.name: PropertyName get() = append("name")
 val PropertyName.tags: PropertyName get() = append("tags")

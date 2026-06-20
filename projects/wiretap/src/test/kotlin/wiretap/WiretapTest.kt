@@ -2,11 +2,17 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import wiretap.util.ActivityLogger
 import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
+import wiretap.util.BulkStat
+import wiretap.util.BulkStatsOptIn
+import wiretap.util.BulkDurationUnit
+import wiretap.util.BulkThroughputUnit
+import wiretap.util.BulkUnit
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.util.LogEntry
@@ -101,9 +107,11 @@ class WiretapTest {
 
         val final = entries.last()
         assertEquals("DeleteFiles", final["wiretap.activity.name"])
-        assertEquals(2, final["wiretap.activity.state.item_count"])
-        assertEquals(1, final["wiretap.activity.state.okay_count"])
-        assertEquals(1, final["wiretap.activity.state.fail_count"])
+        assertEquals(2, final["wiretap.activity.state.bulk.item_count"])
+        assertEquals(1, final["wiretap.activity.state.bulk.okay_count"])
+        assertEquals(1, final["wiretap.activity.state.bulk.fail_count"])
+        assertNotNull(final["wiretap.activity.state.bulk.duration_s"])
+        assertNotNull(final["wiretap.activity.state.bulk.throughput_min"])
     }
 
     @Test
@@ -192,6 +200,9 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<ParseDocumentWithState>()
     }
 
+    @BulkStatsOptIn(BulkStat.CountByStatus)
+    @BulkDurationUnit(BulkUnit.Seconds)
+    @BulkThroughputUnit(BulkUnit.Minutes)
     class DeleteFiles : Activity.Bulk<DeleteFile>() {
         class Okay : ActivityStatus.Okay<DeleteFiles>()
     }

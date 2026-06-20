@@ -132,7 +132,21 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     parent: ActivityScope<*>?,
     statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
 ) : BuzzScope<B>(logger, activity, parent, statusLogOptions) {
-    private val math = BulkMath()
+    private val math = BulkMath(
+        optedIn = activity.javaClass
+            .getAnnotation(BulkStatsOptIn::class.java)
+            ?.value
+            ?.toSet()
+            .orEmpty(),
+        durationUnit = activity.javaClass
+            .getAnnotation(BulkDurationUnit::class.java)
+            ?.value
+            ?: BulkUnit.Milliseconds,
+        throughputUnit = activity.javaClass
+            .getAnnotation(BulkThroughputUnit::class.java)
+            ?.value
+            ?: BulkUnit.Seconds,
+    )
 
     override val role: String = "bulk"
 
@@ -175,7 +189,7 @@ class ItemScope<I : Activity.Buzz>(
     activity = activity,
     parent = parent,
     statusLogOptions = statusLogOptions,
-    onLastStatus = { status, durationMs -> math.count(status, durationMs) },
+    onLastStatus = { status, durationMs -> math.count(status.code, durationMs) },
 ) {
     override val role: String = "item"
 
