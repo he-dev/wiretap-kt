@@ -32,8 +32,8 @@ abstract class ActivityStatus<A : Activity>(
     open val level: ActivityStatusLevel = ActivityStatusLevel.Info
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.status.code, code)
-        add(root.status.role, (this as? ActivityStatusRole)?.role)
+        add(root.activity.status.code, code)
+        add(root.activity.status.role, (this as? ActivityStatusRole)?.role)
     }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {

@@ -10,9 +10,9 @@ abstract class Activity : LogPropertySource {
     open val tags: Set<String> = emptySet()
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.name, name)
+        add(root.activity.name, name)
         if (tags.isNotEmpty()) {
-            add(root.tags, tags)
+            add(root.activity.tags, tags)
         }
     }
 

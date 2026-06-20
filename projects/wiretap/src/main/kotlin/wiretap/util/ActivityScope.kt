@@ -8,18 +8,21 @@ abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
     val activity: A,
     val parent: ActivityScope<*>?,
-) : AutoCloseable, LogPropertySource {
+    traceId: String? = null,
+) : AutoCloseable, LogPropertySource, Iterable<ActivityScope<*>> {
     private var ambient: AutoCloseable? = null
     private val variant = Configuration.resolve(activity)
+
+    val traceContext: TraceContext = TraceContext.create(parent?.traceContext, traceId)
 
     val depth: Int
         get() = parent?.depth?.plus(1) ?: 0
 
+    val ancestors: Sequence<ActivityScope<*>>
+        get() = asSequence().drop(1)
+
     val path: String
-        get() = generateSequence(this as ActivityScope<*>?) { it.parent }
-            .toList()
-            .asReversed()
-            .joinToString("/") { it.activity.name }
+        get() = reversed().joinToString("/") { it.activity.name }
 
     protected abstract val role: String
 
@@ -38,9 +41,13 @@ abstract class ActivityScope<A : Activity>(
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.role, role)
-        add(root.depth, depth)
-        add(root.path, path)
+        add(root.activity.role, role)
+        add(root.activity.depth, depth)
+        add(root.activity.path, path)
+
+        if (variant.attachTraceContext) {
+            traceContext.logProperties(root, add)
+        }
     }
 
     override fun close() {
@@ -48,18 +55,15 @@ abstract class ActivityScope<A : Activity>(
         ambient = null
     }
 
+    override fun iterator(): Iterator<ActivityScope<*>> =
+        // core: Scope iteration follows the parent chain from the current scope to the root.
+        generateSequence(this as ActivityScope<*>?) { it.parent }.iterator()
+
     companion object {
         fun current(): ActivityScope<*>? =
             ActivityScopeAmbient.current()
     }
 }
-
-internal fun ActivityScope<*>.toSequence(): Sequence<ActivityScope<*>> =
-    sequence {
-        // core: Root-first traversal lets nearer scopes overwrite ancestor state.
-        parent?.let { yieldAll(it.toSequence()) }
-        yield(this@toSequence)
-    }
 
 open class BuzzScope<A : Activity.Buzz>(
     logger: ActivityLogger,
@@ -67,7 +71,8 @@ open class BuzzScope<A : Activity.Buzz>(
     parent: ActivityScope<*>?,
     private val statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
     private val onLastStatus: ((ActivityStatus<A>, Long) -> Unit)? = null,
-) : ActivityScope<A>(logger, activity, parent) {
+    traceId: String? = null,
+) : ActivityScope<A>(logger, activity, parent, traceId) {
     private val startedAt = TimeSource.Monotonic.markNow()
     private var lastStatus: ActivityStatus<A>? = null
 
@@ -92,7 +97,7 @@ open class BuzzScope<A : Activity.Buzz>(
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
         super.logProperties(root, add)
-        add(root.durationMs, durationMs)
+        add(root.activity.durationMs, durationMs)
     }
 
     override fun close() {
@@ -115,8 +120,9 @@ open class BuzzScope<A : Activity.Buzz>(
             activity: A,
             parent: ActivityScope<*>? = ActivityScope.current(),
             statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+            traceId: String? = null,
         ): BuzzScope<A> =
-            BuzzScope(logger, activity, parent, statusLogOptions).push()
+            BuzzScope(logger, activity, parent, statusLogOptions, traceId = traceId).push()
     }
 }
 

@@ -22,7 +22,7 @@ class BulkMath : LogPropertySource {
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        val state = root.state
+        val state = root.activity.state
         add(state.append("item_count"), itemCount)
         add(state.append("duration_ms"), durationMs)
 

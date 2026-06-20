@@ -13,29 +13,33 @@ import wiretap.util.bothStatusLogOptions
 
 fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
     activity: A,
+    traceId: String? = null,
 ): BuzzScope<A> =
-    beginBuzz(activity, ActivityScope.current())
+    beginBuzz(activity, ActivityScope.current(), traceId = traceId)
 
 fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
     activity: A,
+    traceId: String? = null,
     block: BuzzScope<A>.() -> R,
 ): R =
-    beginBuzz(activity).use(block)
+    beginBuzz(activity, traceId).use(block)
 
 fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
     statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    traceId: String? = null,
 ): BuzzScope<A> =
-    BuzzScope.push(this, activity, parent, statusLogOptions)
+    BuzzScope.push(this, activity, parent, statusLogOptions, traceId)
 
 fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
     statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    traceId: String? = null,
     block: BuzzScope<A>.() -> R,
 ): R =
-    beginBuzz(activity, parent, statusLogOptions).use(block)
+    beginBuzz(activity, parent, statusLogOptions, traceId).use(block)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     activity: B,

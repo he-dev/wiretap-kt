@@ -12,7 +12,6 @@ import wiretap.util.durationMs
 import wiretap.util.name
 import wiretap.util.state
 import wiretap.util.status
-import wiretap.util.toSequence
 import wiretap.util.wiretap
 import java.util.Locale
 
@@ -22,7 +21,7 @@ class CreateLogEntry private constructor(
     private val joinMessageParts: List<MessagePartMap.Entry>.() -> String,
 ) {
     fun from(scope: ActivityScope<*>, status: ActivityStatus<*>): LogEntry {
-        val logProperties = collectLogProperties(root.activity, scope, status)
+        val logProperties = collectLogProperties(root, scope, status)
         val messageParts = collectMessageParts(root.activity, logProperties, scope, status)
         val messageContext = MessageContext(root, logProperties, messageParts)
         val messagePartsArranged = messageContext.arrangeMessageParts()
@@ -47,9 +46,10 @@ class CreateLogEntry private constructor(
         }
 
         AnnotatedStateItems.pushFromAncestors(
-            root.state,
+            root.activity.state,
             addLogProperty,
-            scope.toSequence().filter { it !== scope }.map { it.activity },
+            // core: Cascade root-first so nearer activities overwrite their ancestors.
+            scope.reversed().dropLast(1).asSequence().map { it.activity },
         )
 
         // core: Framework scopes and optional user sources share one stable property feed.
@@ -57,8 +57,8 @@ class CreateLogEntry private constructor(
             source.logProperties(root, addLogProperty)
         }
 
-        AnnotatedStateItems.pushFromSelf(root.state, addLogProperty, scope.activity)
-        AnnotatedStateItems.pushFromSelf(root.state, addLogProperty, status)
+        AnnotatedStateItems.pushFromSelf(root.activity.state, addLogProperty, scope.activity)
+        AnnotatedStateItems.pushFromSelf(root.activity.state, addLogProperty, status)
 
         return properties
     }
