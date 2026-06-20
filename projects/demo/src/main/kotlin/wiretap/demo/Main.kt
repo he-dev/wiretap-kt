@@ -8,9 +8,12 @@ import wiretap.slf4j.core.beginBuzz
 import wiretap.slf4j.core.beginBulk
 import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
+import wiretap.util.BulkItem
 import wiretap.util.Configuration
+import wiretap.util.CountOnlyBulkItem
 import wiretap.util.MessagePart
 import wiretap.util.MessagePartOptions
+import wiretap.util.OmitStatus
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.buzz.AddMessagePart
@@ -85,6 +88,7 @@ class DeleteFiles : Activity.Bulk<DeleteFile>() {
     class Okay : ActivityStatus.Okay<DeleteFiles>()
 }
 
+@BulkItem(OmitStatus.First)
 class DeleteFile(private val path: String) : Activity.Buzz() {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 

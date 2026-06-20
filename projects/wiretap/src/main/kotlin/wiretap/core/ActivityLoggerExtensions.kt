@@ -5,10 +5,9 @@ import wiretap.util.ActivityLogger
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.BulkScope
+import wiretap.util.BulkScopeProfile
 import wiretap.util.BuzzScope
 import wiretap.util.SnapScope
-import wiretap.util.StatusLogOption
-import wiretap.util.bothStatusLogOptions
 
 
 fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
@@ -27,45 +26,49 @@ fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
 fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
     traceId: String? = null,
 ): BuzzScope<A> =
-    BuzzScope.push(this, activity, parent, statusLogOptions, traceId)
+    BuzzScope.push(this, activity, parent, traceId)
 
 fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
     traceId: String? = null,
     block: BuzzScope<A>.() -> R,
 ): R =
-    beginBuzz(activity, parent, statusLogOptions, traceId).use(block)
+    beginBuzz(activity, parent, traceId).use(block)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     activity: B,
+    profile: BulkScopeProfile = BulkScopeProfile.from(activity::class),
+    traceId: String? = null,
 ): BulkScope<B, I> =
-    beginBulk(activity, ActivityScope.current())
+    beginBulk(activity, ActivityScope.current(), profile, traceId)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
     activity: B,
+    profile: BulkScopeProfile = BulkScopeProfile.from(activity::class),
+    traceId: String? = null,
     block: BulkScope<B, I>.() -> R,
 ): R =
-    beginBulk(activity).use(block)
+    beginBulk(activity, profile, traceId).use(block)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    profile: BulkScopeProfile = BulkScopeProfile.from(activity::class),
+    traceId: String? = null,
 ): BulkScope<B, I> =
-    BulkScope.push(this, activity, parent, statusLogOptions)
+    BulkScope.push(this, activity, parent, profile, traceId)
 
 fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+    profile: BulkScopeProfile = BulkScopeProfile.from(activity::class),
+    traceId: String? = null,
     block: BulkScope<B, I>.() -> R,
 ): R =
-    beginBulk(activity, parent, statusLogOptions).use(block)
+    beginBulk(activity, parent, profile, traceId).use(block)
 
 fun <A : Activity.Snap> ActivityLogger.logSnap(
     activity: A,

@@ -69,7 +69,6 @@ open class BuzzScope<A : Activity.Buzz>(
     logger: ActivityLogger,
     activity: A,
     parent: ActivityScope<*>?,
-    private val statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
     private val onLastStatus: ((ActivityStatus<A>, Long) -> Unit)? = null,
     traceId: String? = null,
 ) : ActivityScope<A>(logger, activity, parent, traceId) {
@@ -87,8 +86,7 @@ open class BuzzScope<A : Activity.Buzz>(
 
     override fun push(): BuzzScope<A> {
         super.push()
-
-        if (StatusLogOption.First in statusLogOptions) {
+        if (!omits(OmitStatus.First)) {
             log(ActivityStatus.Ready())
         }
 
@@ -106,7 +104,7 @@ open class BuzzScope<A : Activity.Buzz>(
             lastStatus = it
         }
 
-        if (StatusLogOption.Last in statusLogOptions) {
+        if (!omits(OmitStatus.Last)) {
             log(status)
         }
 
@@ -114,15 +112,17 @@ open class BuzzScope<A : Activity.Buzz>(
         super.close()
     }
 
+    protected open fun omits(status: OmitStatus): Boolean =
+        false
+
     companion object {
         fun <A : Activity.Buzz> push(
             logger: ActivityLogger,
             activity: A,
             parent: ActivityScope<*>? = ActivityScope.current(),
-            statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
             traceId: String? = null,
         ): BuzzScope<A> =
-            BuzzScope(logger, activity, parent, statusLogOptions, traceId = traceId).push()
+            BuzzScope(logger, activity, parent, traceId = traceId).push()
     }
 }
 
@@ -130,22 +130,13 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     logger: ActivityLogger,
     activity: B,
     parent: ActivityScope<*>?,
-    statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
-) : BuzzScope<B>(logger, activity, parent, statusLogOptions) {
+    private val profile: BulkScopeProfile,
+    traceId: String? = null,
+) : BuzzScope<B>(logger, activity, parent, traceId = traceId) {
     private val math = BulkMath(
-        optedIn = activity.javaClass
-            .getAnnotation(BulkStatsOptIn::class.java)
-            ?.value
-            ?.toSet()
-            .orEmpty(),
-        durationUnit = activity.javaClass
-            .getAnnotation(BulkDurationUnit::class.java)
-            ?.value
-            ?: BulkUnit.Milliseconds,
-        throughputUnit = activity.javaClass
-            .getAnnotation(BulkThroughputUnit::class.java)
-            ?.value
-            ?: BulkUnit.Seconds,
+        optedIn = profile.stats,
+        durationUnit = profile.durationUnit,
+        throughputUnit = profile.throughputUnit,
     )
 
     override val role: String = "bulk"
@@ -155,12 +146,19 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
         return this
     }
 
-    fun beginItem(activity: I): ItemScope<I> =
+    fun beginItem(
+        activity: I,
+        omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
+    ): ItemScope<I> =
         // core: Items report their final status into the parent bulk math instead of owning a separate summary.
-        ItemScope.push(logger, activity, parent = this, math, this.activity.itemStatusLogOptions)
+        ItemScope.push(logger, activity, parent = this, math, omitStatuses)
 
-    fun <R> beginItem(activity: I, block: ItemScope<I>.() -> R): R =
-        beginItem(activity).use(block)
+    fun <R> beginItem(
+        activity: I,
+        omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
+        block: ItemScope<I>.() -> R,
+    ): R =
+        beginItem(activity, omitStatuses).use(block)
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
         super.logProperties(root, add)
@@ -172,9 +170,10 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
             logger: ActivityLogger,
             activity: B,
             parent: ActivityScope<*>? = ActivityScope.current(),
-            statusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
+            profile: BulkScopeProfile,
+            traceId: String? = null,
         ): BulkScope<B, I> =
-            BulkScope(logger, activity, parent, statusLogOptions).push()
+            BulkScope(logger, activity, parent, profile, traceId).push()
     }
 }
 
@@ -183,12 +182,11 @@ class ItemScope<I : Activity.Buzz>(
     activity: I,
     parent: ActivityScope<*>?,
     private val math: BulkMath,
-    statusLogOptions: Set<StatusLogOption>,
+    private val omitStatuses: Set<OmitStatus>,
 ) : BuzzScope<I>(
     logger = logger,
     activity = activity,
     parent = parent,
-    statusLogOptions = statusLogOptions,
     onLastStatus = { status, durationMs -> math.count(status.code, durationMs) },
 ) {
     override val role: String = "item"
@@ -198,15 +196,18 @@ class ItemScope<I : Activity.Buzz>(
         return this
     }
 
+    override fun omits(status: OmitStatus): Boolean =
+        status in omitStatuses
+
     companion object {
         fun <I : Activity.Buzz> push(
             logger: ActivityLogger,
             activity: I,
             parent: ActivityScope<*>?,
             math: BulkMath,
-            statusLogOptions: Set<StatusLogOption>,
+            omitStatuses: Set<OmitStatus>,
         ): ItemScope<I> =
-            ItemScope(logger, activity, parent, math, statusLogOptions).push()
+            ItemScope(logger, activity, parent, math, omitStatuses).push()
     }
 }
 

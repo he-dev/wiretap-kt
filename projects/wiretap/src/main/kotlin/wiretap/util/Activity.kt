@@ -20,7 +20,5 @@ abstract class Activity : LogPropertySource {
 
     abstract class Snap : Activity()
 
-    abstract class Bulk<I : Buzz>(
-        open val itemStatusLogOptions: Set<StatusLogOption> = bothStatusLogOptions,
-    ) : Buzz()
+    abstract class Bulk<I : Buzz> : Buzz()
 }

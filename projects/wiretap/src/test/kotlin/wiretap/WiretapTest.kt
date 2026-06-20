@@ -2,6 +2,7 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import wiretap.util.ActivityLogger
@@ -11,8 +12,12 @@ import wiretap.util.ActivityStatus
 import wiretap.util.BulkStat
 import wiretap.util.BulkStatsOptIn
 import wiretap.util.BulkDurationUnit
+import wiretap.util.BulkItem
+import wiretap.util.BulkScopeProfile
 import wiretap.util.BulkThroughputUnit
 import wiretap.util.BulkUnit
+import wiretap.util.CountOnlyBulkItem
+import wiretap.util.OmitStatus
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.util.LogEntry
@@ -93,7 +98,7 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBulk(DeleteFiles()) {
+        logger.beginBulk(DeleteFiles(), traceId = "external-trace") {
             beginItem(DeleteFile()) {
                 setStatus(DeleteFile.Okay())
             }
@@ -106,12 +111,74 @@ class WiretapTest {
         }
 
         val final = entries.last()
+        assertEquals(listOf("DeleteFiles", "DeleteFiles"), entries.map { it["wiretap.activity.name"] })
         assertEquals("DeleteFiles", final["wiretap.activity.name"])
+        assertEquals("external-trace", final["wiretap.trace_id"])
         assertEquals(2, final["wiretap.activity.state.bulk.item_count"])
         assertEquals(1, final["wiretap.activity.state.bulk.okay_count"])
         assertEquals(1, final["wiretap.activity.state.bulk.fail_count"])
         assertNotNull(final["wiretap.activity.state.bulk.duration_s"])
         assertNotNull(final["wiretap.activity.state.bulk.throughput_min"])
+    }
+
+    @Test
+    fun bulkItemCanOmitOnlyItsFirstStatus() {
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
+
+        logger.beginBulk(IndexReportFiles()) {
+            beginItem(IndexReportFile()) {
+                setStatus(IndexReportFile.Okay())
+            }
+            setStatus(IndexReportFiles.Okay())
+        }
+
+        val itemStatuses = entries
+            .filter { it["wiretap.activity.name"] == "IndexReportFile" }
+            .map { it["wiretap.activity.status.code"] }
+        assertEquals(listOf("Okay"), itemStatuses)
+    }
+
+    @Test
+    fun explicitItemOmissionsOverrideItsAnnotations() {
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
+
+        logger.beginBulk(DeleteFiles()) {
+            beginItem(DeleteFile(), omitStatuses = emptySet()) {
+                setStatus(DeleteFile.Okay())
+            }
+            setStatus(DeleteFiles.Okay())
+        }
+
+        val itemStatuses = entries
+            .filter { it["wiretap.activity.name"] == "DeleteFile" }
+            .map { it["wiretap.activity.status.code"] }
+        assertEquals(listOf("Ready", "Okay"), itemStatuses)
+    }
+
+    @Test
+    fun explicitBulkProfileOverridesAnnotations() {
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
+        val profile = BulkScopeProfile(
+            stats = setOf(BulkStat.RateByStatus),
+            durationUnit = BulkUnit.Milliseconds,
+            throughputUnit = BulkUnit.Seconds,
+        )
+
+        logger.beginBulk(DeleteFiles(), profile) {
+            beginItem(DeleteFile()) {
+                setStatus(DeleteFile.Okay())
+            }
+            setStatus(DeleteFiles.Okay())
+        }
+
+        val final = entries.last()
+        assertNotNull(final["wiretap.activity.state.bulk.duration_ms"])
+        assertNotNull(final["wiretap.activity.state.bulk.throughput_s"])
+        assertEquals(1.0, final["wiretap.activity.state.bulk.okay_rate"])
+        assertFalse(final.containsKey("wiretap.activity.state.bulk.okay_count"))
     }
 
     @Test
@@ -207,10 +274,20 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<DeleteFiles>()
     }
 
+    @CountOnlyBulkItem
     class DeleteFile : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<DeleteFile>()
 
         class Fail : ActivityStatus.Fail<DeleteFile>()
+    }
+
+    class IndexReportFiles : Activity.Bulk<IndexReportFile>() {
+        class Okay : ActivityStatus.Okay<IndexReportFiles>()
+    }
+
+    @BulkItem(OmitStatus.First)
+    class IndexReportFile : Activity.Buzz() {
+        class Okay : ActivityStatus.Okay<IndexReportFile>()
     }
 
     class SaveRecord(
