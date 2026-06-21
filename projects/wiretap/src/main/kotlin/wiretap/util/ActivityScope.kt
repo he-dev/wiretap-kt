@@ -36,8 +36,8 @@ abstract class ActivityScope<A : Activity>(
 
     abstract fun setStatus(status: ActivityStatus<A>);
 
-    protected fun log(status: ActivityStatus<A>) {
-        logger.log(variant.createLogEntryBy.from(this, status))
+    protected fun log(status: ActivityStatus<A>, vararg propertySources: Any?) {
+        logger.log(variant.createLogEntry.from(this, status, *propertySources))
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
@@ -83,7 +83,7 @@ open class BuzzScope<A : Activity.Buzz>(
     traceId: String? = null,
 ) : ActivityScope<A>(logger, activity, parent, traceId) {
     private val startedAt = TimeSource.Monotonic.markNow()
-    private var lastStatus: ActivityStatus<A>? = null
+    private var lastStatus: StatusSnapshot<A>? = null
 
     override val role: String = "buzz"
 
@@ -91,39 +91,38 @@ open class BuzzScope<A : Activity.Buzz>(
         get() = startedAt.elapsedNow().inWholeMilliseconds
 
     override fun setStatus(status: ActivityStatus<A>) {
-        lastStatus = status
+        lastStatus = StatusSnapshot(status, durationMs)
     }
 
     override fun push(): BuzzScope<A> {
         super.push()
         if (!omits(OmitStatus.First)) {
-            log(ActivityStatus.Ready())
+            log(StatusSnapshot(ActivityStatus.Ready(), durationMs))
         }
 
         return this
     }
 
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        super.logProperties(root, add)
-        add(root.activity.durationMs, durationMs)
-    }
-
     override fun close() {
         // core: A buzz without an explicit final status is still logged, so open scopes cannot disappear silently.
-        val status = lastStatus ?: ActivityStatus.Void<A>().also {
+        val snapshot = lastStatus ?: StatusSnapshot(ActivityStatus.Void<A>(), durationMs).also {
             lastStatus = it
         }
 
         if (!omits(OmitStatus.Last)) {
-            log(status)
+            log(snapshot)
         }
 
-        onLastStatus?.invoke(status, durationMs)
+        onLastStatus?.invoke(snapshot.status, snapshot.durationMs)
         super.close()
     }
 
     protected open fun omits(status: OmitStatus): Boolean =
         false
+
+    private fun log(snapshot: StatusSnapshot<A>) {
+        log(snapshot.status, snapshot)
+    }
 
     companion object {
         fun <A : Activity.Buzz> push(
@@ -133,6 +132,15 @@ open class BuzzScope<A : Activity.Buzz>(
             traceId: String? = null,
         ): BuzzScope<A> =
             BuzzScope(logger, activity, parent, traceId = traceId).push()
+    }
+}
+
+private data class StatusSnapshot<A : Activity.Buzz>(
+    val status: ActivityStatus<A>,
+    val durationMs: Long,
+) : LogPropertySource {
+    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        add(root.activity.durationMs, durationMs)
     }
 }
 
@@ -161,7 +169,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     fun <R> beginItem(
         activity: I,
         omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
-        block: ItemScope<I>.() -> R,
+        block: (ItemScope<I>) -> R,
     ): R =
         beginItem(activity, omitStatuses).use(block)
 

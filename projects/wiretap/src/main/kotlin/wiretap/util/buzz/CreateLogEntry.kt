@@ -18,8 +18,18 @@ class CreateLogEntry private constructor(
     private val arrangeMessageParts: MessageContext.() -> List<MessagePartMap.Entry>,
     private val joinMessageParts: List<MessagePartMap.Entry>.() -> String,
 ) {
-    fun from(scope: ActivityScope<*>, status: ActivityStatus<*>): LogEntry {
-        val logProperties = getLogProperties(root, scope, scope.activity, status)
+    fun from(
+        scope: ActivityScope<*>,
+        status: ActivityStatus<*>,
+        vararg propertySources: Any?,
+    ): LogEntry {
+        val logProperties = getLogProperties(
+            root,
+            scope,
+            *propertySources,
+            scope.activity,
+            status,
+        )
         val activityRoot = root.activity
         val get = GetLogProperty { logProperties[it] }
         val messageParts = getMessageParts(activityRoot, get, scope.activity, status)

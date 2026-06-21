@@ -39,7 +39,7 @@ class ConfigurationTest {
     @Test
     fun setsDefaultVariant() {
         val previous = Configuration.default
-        val replacement = Configuration.Variant(createLogEntryBy = createLogEntryBy())
+        val replacement = Configuration.Variant(createLogEntry = createLogEntryBy())
 
         try {
             val configured = Configuration.setDefault { replacement }
@@ -53,7 +53,7 @@ class ConfigurationTest {
 
     @Test
     fun addsAndResolvesNamedVariant() {
-        val variant = Configuration.Variant(createLogEntryBy = createLogEntryBy())
+        val variant = Configuration.Variant(createLogEntry = createLogEntryBy())
 
         val configured = Configuration.addNamed("compact") { variant }
         val resolved = Configuration.resolve(CompactActivity())
@@ -65,7 +65,7 @@ class ConfigurationTest {
 
     @Test
     fun resolvesNamedVariantAddedAfterCachedFallback() {
-        val variant = Configuration.Variant(createLogEntryBy = createLogEntryBy())
+        val variant = Configuration.Variant(createLogEntry = createLogEntryBy())
 
         assertSame(Configuration.default, Configuration.resolve(LateActivity()))
 

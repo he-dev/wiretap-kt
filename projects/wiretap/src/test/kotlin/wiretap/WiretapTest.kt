@@ -9,6 +9,7 @@ import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.BulkItem
+import wiretap.util.BuzzScope
 import wiretap.util.CountOnlyBulkItem
 import wiretap.util.OmitStatus
 import wiretap.core.beginBuzz
@@ -75,6 +76,20 @@ class WiretapTest {
     }
 
     @Test
+    fun setStatusFreezesDurationForFinalLog() {
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
+        val scope = ControlledBuzzScope(logger, ImportDocument())
+
+        scope.elapsedMs = 10
+        scope.setStatus(ImportDocument.Okay())
+        scope.elapsedMs = 20
+        scope.close()
+
+        assertEquals(10L, entries.last()["wiretap.activity.duration_ms"])
+    }
+
+    @Test
     fun beginBuzzBlockClosesScopeAndReturnsValue() {
         val result = logger.beginBuzz(ImportDocument()) {
             assertEquals(this, ActivityScope.current())
@@ -91,16 +106,16 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBulk(DeleteFiles(), traceId = "external-trace") {
-            beginItem(DeleteFile()) {
-                setStatus(DeleteFile.Okay())
+        logger.beginBulk(DeleteFiles(), traceId = "external-trace") { bulk ->
+            bulk.beginItem(DeleteFile()) { item ->
+                item.setStatus(DeleteFile.Okay())
             }
 
-            beginItem(DeleteFile()) {
-                setStatus(DeleteFile.Fail())
+            bulk.beginItem(DeleteFile()) { item ->
+                item.setStatus(DeleteFile.Fail())
             }
 
-            setStatus(DeleteFiles.Okay())
+            bulk.setStatus(DeleteFiles.Okay())
         }
 
         val final = entries.last()
@@ -119,11 +134,11 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBulk(IndexReportFiles()) {
-            beginItem(IndexReportFile()) {
-                setStatus(IndexReportFile.Okay())
+        logger.beginBulk(IndexReportFiles()) { bulk ->
+            bulk.beginItem(IndexReportFile()) { item ->
+                item.setStatus(IndexReportFile.Okay())
             }
-            setStatus(IndexReportFiles.Okay())
+            bulk.setStatus(IndexReportFiles.Okay())
         }
 
         val itemStatuses = entries
@@ -137,11 +152,11 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBulk(DeleteFiles()) {
-            beginItem(DeleteFile(), omitStatuses = emptySet()) {
-                setStatus(DeleteFile.Okay())
+        logger.beginBulk(DeleteFiles()) { bulk ->
+            bulk.beginItem(DeleteFile(), omitStatuses = emptySet()) { item ->
+                item.setStatus(DeleteFile.Okay())
             }
-            setStatus(DeleteFiles.Okay())
+            bulk.setStatus(DeleteFiles.Okay())
         }
 
         val itemStatuses = entries
@@ -287,6 +302,16 @@ class WiretapTest {
         val alias: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
+    }
+
+    private class ControlledBuzzScope(
+        logger: ActivityLogger,
+        activity: ImportDocument,
+    ) : BuzzScope<ImportDocument>(logger, activity, parent = null) {
+        var elapsedMs: Long = 0
+
+        override val durationMs: Long
+            get() = elapsedMs
     }
 
     private class TestActivityLogger(

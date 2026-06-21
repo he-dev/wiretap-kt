@@ -16,14 +16,38 @@ import wiretap.util.MessagePartOptions
 import wiretap.util.OmitStatus
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
+import wiretap.util.activity
 import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.MessagePartSource
+import wiretap.util.buzz.composeMessageBy
+import wiretap.util.buzz.createLogEntryBy
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
 fun main() {
     Configuration.useDiagnosticsLogger()
+
+    createLogEntryBy {
+        root = PropertyName("wiretap", "demo")
+        registerMessageParts {
+            parts.push(root.activity.append("test"), "Demo")
+        }
+    }
+
+    composeMessageBy {
+        messageParts {
+            push(root.activity.append("test"), "Demo")
+        }
+        arrange {
+            positional(root.activity.append("test"))
+            remaining()
+        }
+        join {
+            joinToString(" | ") { it.value.toString() }
+        }
+    }
+
     logger.info("{} demo", Wiretap.name)
 
     logger.beginBuzz(ImportDocument("customers.csv")) {
@@ -35,16 +59,16 @@ fun main() {
         logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
     }
 
-    logger.beginBulk(DeleteFiles()) {
-        beginItem(DeleteFile("/tmp/one.csv")) {
-            setStatus(DeleteFile.Okay())
+    logger.beginBulk(DeleteFiles()) { bulk ->
+        bulk.beginItem(DeleteFile("/tmp/one.csv")) { item ->
+            item.setStatus(DeleteFile.Okay())
         }
 
-        beginItem(DeleteFile("/tmp/two.tmp")) {
-            setStatus(DeleteFile.Fail(IllegalStateException("Temporary files are skipped.")))
+        bulk.beginItem(DeleteFile("/tmp/two.tmp")) { item ->
+            item.setStatus(DeleteFile.Fail(IllegalStateException("Temporary files are skipped.")))
         }
 
-        setStatus(DeleteFiles.Okay())
+        bulk.setStatus(DeleteFiles.Okay())
     }
 }
 

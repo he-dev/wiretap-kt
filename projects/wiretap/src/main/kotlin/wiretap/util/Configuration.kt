@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object Configuration {
     data class Variant(
-        val createLogEntryBy: CreateLogEntry = createLogEntryBy(),
+        val createLogEntry: CreateLogEntry = createLogEntryBy(),
         val attachTraceContext: Boolean = true,
     )
 
