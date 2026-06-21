@@ -41,6 +41,16 @@ abstract class ActivityScope<A : Activity>(
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        // core: Cascade root-first so nearer activities overwrite their ancestors.
+        reversed().dropLast(1).forEach { ancestor ->
+            addAnnotatedLogProperties(
+                root.activity.state,
+                ancestor.activity,
+                add,
+                cascadingOnly = true,
+            )
+        }
+
         add(root.activity.role, role)
         add(root.activity.depth, depth)
         add(root.activity.path, path)

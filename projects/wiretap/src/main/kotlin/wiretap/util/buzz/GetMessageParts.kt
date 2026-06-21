@@ -2,19 +2,27 @@ package wiretap.util.buzz
 
 import wiretap.util.MessagePart
 import wiretap.util.MessagePartOptions
+import wiretap.util.PropertyName
 import wiretap.util.nullIfUnset
 
-object FindAnnotatedMessageParts {
-    fun on(source: Any?, addMessagePart: AddMessagePart) {
-        if (source == null) return
+fun getMessageParts(
+    root: PropertyName,
+    get: GetLogProperty,
+    vararg sources: Any?,
+): MessagePartMap {
+    val parts = MessagePartMap()
+    val add = AddMessagePart(parts::push)
 
-        FindAnnotatedProperties.on<MessagePart>(source)
+    sources.asSequence().filterNotNull().forEach { source ->
+        (source as? MessagePartSource)?.messageParts(root, get, add)
+
+        annotatedProperties<MessagePart>(source)
             .mapNotNull { property ->
                 property.value(source)?.let { property to it }
             }
             .forEach { (property, value) ->
                 val annotation = property.annotation
-                addMessagePart(
+                add(
                     property.name,
                     value,
                     MessagePartOptions(
@@ -25,4 +33,6 @@ object FindAnnotatedMessageParts {
                 )
             }
     }
+
+    return parts
 }

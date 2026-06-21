@@ -2,43 +2,39 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import wiretap.util.AnnotatedStateItems
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
 import wiretap.util.LogEntry
+import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.buzz.AddLogProperty
-import wiretap.util.PropertyName
+import wiretap.util.buzz.LogPropertySource
+import wiretap.util.buzz.addAnnotatedLogProperties
+import wiretap.util.buzz.getLogProperties
 
-class AnnotatedStateItemsTest {
+class GetLogPropertiesTest {
     @Test
-    fun pushesEveryStateItemFromSelf() {
-        val properties = linkedMapOf<String, Any?>()
-
-        AnnotatedStateItems.pushFromSelf(
-            PropertyName("state"),
-            AddLogProperty(properties::put),
+    fun getsPropertiesFromInterfacesAndAnnotations() {
+        val properties = getLogProperties(
+            PropertyName("wiretap"),
             Source(local = "local", cascading = "shared"),
         )
 
-        assertEquals(
-            mapOf<String, Any?>(
-                "state.local" to "local",
-                "state.cascading" to "shared",
-            ),
-            properties,
-        )
+        assertEquals("interface", properties["wiretap.source"])
+        assertEquals("local", properties["wiretap.activity.state.local"])
+        assertEquals("shared", properties["wiretap.activity.state.cascading"])
     }
 
     @Test
-    fun pushesOnlyCascadingStateItemsFromAncestors() {
+    fun addsOnlyCascadingStateItemsFromAncestors() {
         val properties = linkedMapOf<String, Any?>()
 
-        AnnotatedStateItems.pushFromAncestors(
+        addAnnotatedLogProperties(
             PropertyName("state"),
+            Source(local = "local", cascading = "shared"),
             AddLogProperty(properties::put),
-            sequenceOf(Source(local = "local", cascading = "shared")),
+            cascadingOnly = true,
         )
 
         assertEquals(
@@ -51,7 +47,6 @@ class AnnotatedStateItemsTest {
     fun warnsAndIgnoresNonPublicStateItems() {
         val diagnostics = mutableListOf<LogEntry>()
         val previous = Configuration.diagnosticLogger
-        val properties = linkedMapOf<String, Any?>()
         val logger = object : ActivityLogger {
             override fun log(entry: LogEntry) {
                 diagnostics += entry
@@ -60,16 +55,12 @@ class AnnotatedStateItemsTest {
 
         try {
             Configuration.logDiagnosticsWith(logger)
-            AnnotatedStateItems.pushFromSelf(
-                PropertyName("state"),
-                AddLogProperty(properties::put),
-                PrivateSource("hidden"),
-            )
+            val properties = getLogProperties(PropertyName("wiretap"), PrivateSource("hidden"))
+            assertEquals(emptyMap(), properties)
         } finally {
             Configuration.logDiagnosticsWith(previous)
         }
 
-        assertEquals(emptyMap(), properties)
         assertEquals(ActivityStatusLevel.Warning, diagnostics.single().level)
         assertEquals(
             "@StateItem on non-public property '${PrivateSource::class.qualifiedName}.hidden' was ignored; " +
@@ -84,7 +75,11 @@ class AnnotatedStateItemsTest {
 
         @StateItem(cascade = true)
         val cascading: String,
-    )
+    ) : LogPropertySource {
+        override fun logProperties(root: PropertyName, add: AddLogProperty) {
+            add(root.append("source"), "interface")
+        }
+    }
 
     class PrivateSource(
         @StateItem

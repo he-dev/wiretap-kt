@@ -101,6 +101,20 @@ class CreateLogEntryTest {
         )
     }
 
+    @Test
+    fun registeredMessagePartsCanReplaceDefaultsByName() {
+        val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
+        val factory = createLogEntryBy {
+            registerMessageParts {
+                parts.push(root.activity.name, "Custom")
+            }
+        }
+
+        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException("broken")))
+
+        assertEquals("Custom; Duration: N/A; Exception: broken", entry.message)
+    }
+
     class EntryActivity(
         @StateItem
         val recordId: String,
