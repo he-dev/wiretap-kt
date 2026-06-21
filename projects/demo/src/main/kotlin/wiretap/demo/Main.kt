@@ -17,8 +17,11 @@ import wiretap.util.OmitStatus
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.activity
+import wiretap.util.state
+import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.GetLogProperty
+import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.MessagePartSource
 import wiretap.util.buzz.composeMessageBy
 import wiretap.util.buzz.createLogEntryBy
@@ -72,8 +75,13 @@ fun main() {
     }
 }
 
-class ImportDocument(private val source: String) : Activity.Buzz(), MessagePartSource {
+class ImportDocument(private val source: String) : Activity.Buzz(), LogPropertySource, MessagePartSource {
     override val tags: Set<String> = setOf("import")
+
+    override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+        cascading(root.activity.state.append("source"), source)
+        localOnly(root.activity.state.append("mode"), "document")
+    }
 
     override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
         add(
@@ -117,4 +125,24 @@ class DeleteFile(private val path: String) : Activity.Buzz() {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)
+}
+
+private interface A {
+    fun String.example()
+}
+
+private open class B : A {
+    override fun String.example() = Unit
+}
+
+private class C : B() {
+    override fun String.example() {
+        // Neither form compiles because Kotlin cannot bind super dispatch to the current extension receiver.
+        // super.example()
+        // super<B>.example()
+        // Cast the dispatch receiver to B to access its implementation
+        with(this@C as B) {
+            example() // Resolves to B's implementation of String.example()
+        }
+    }
 }

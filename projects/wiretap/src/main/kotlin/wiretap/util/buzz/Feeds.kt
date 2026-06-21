@@ -3,9 +3,12 @@ package wiretap.util.buzz
 import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 
-fun interface AddLogProperty {
-    operator fun invoke(key: String, value: Any?)
-    operator fun invoke(key: PropertyName, value: Any?) = invoke(key.toString(), value)
+interface AddLogProperty {
+    fun localOnly(key: PropertyName, value: Any?)
+    fun localOnly(key: String, value: Any?) = localOnly(PropertyName(key), value)
+
+    fun cascading(key: PropertyName, value: Any?)
+    fun cascading(key: String, value: Any?) = cascading(PropertyName(key), value)
 }
 
 fun interface AddMessagePart {

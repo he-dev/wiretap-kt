@@ -11,6 +11,7 @@ import wiretap.util.StateItem
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.addAnnotatedLogProperties
+import wiretap.util.buzz.cascadingOnly
 import wiretap.util.buzz.getLogProperties
 
 class GetLogPropertiesTest {
@@ -33,8 +34,15 @@ class GetLogPropertiesTest {
         addAnnotatedLogProperties(
             PropertyName("state"),
             Source(local = "local", cascading = "shared"),
-            AddLogProperty(properties::put),
-            cascadingOnly = true,
+            object : AddLogProperty {
+                override fun localOnly(key: PropertyName, value: Any?) {
+                    value?.let { properties[key.toString()] = it }
+                }
+
+                override fun cascading(key: PropertyName, value: Any?) {
+                    localOnly(key, value)
+                }
+            }.cascadingOnly(),
         )
 
         assertEquals(
@@ -76,8 +84,8 @@ class GetLogPropertiesTest {
         @StateItem(cascade = true)
         val cascading: String,
     ) : LogPropertySource {
-        override fun logProperties(root: PropertyName, add: AddLogProperty) {
-            add(root.append("source"), "interface")
+        override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+            localOnly(root.append("source"), "interface")
         }
     }
 

@@ -11,8 +11,14 @@ fun getLogProperties(
     vararg sources: Any?,
 ): Map<String, Any?> =
     buildMap {
-        val add = AddLogProperty { name, value ->
-            value?.let { put(name, it) }
+        val add = object : AddLogProperty {
+            override fun localOnly(key: PropertyName, value: Any?) {
+                value?.let { put(key.toString(), it) }
+            }
+
+            override fun cascading(key: PropertyName, value: Any?) {
+                localOnly(key, value)
+            }
         }
 
         sources.asSequence().filterNotNull().forEach { source ->
@@ -25,12 +31,25 @@ internal fun addAnnotatedLogProperties(
     prefix: PropertyName,
     source: Any,
     add: AddLogProperty,
-    cascadingOnly: Boolean = false,
 ) {
     annotatedProperties<StateItem>(source)
-        .filter { !cascadingOnly || it.annotation.cascade }
         .forEach { property ->
             val name = property.annotation.name.nullIfUnset() ?: property.name
-            add(prefix.append(name), property.value(source))
+            val value = property.value(source)
+
+            if (property.annotation.cascade) {
+                add.cascading(prefix.append(name), value)
+            } else {
+                add.localOnly(prefix.append(name), value)
+            }
         }
 }
+
+internal fun AddLogProperty.cascadingOnly(): AddLogProperty =
+    object : AddLogProperty {
+        override fun localOnly(key: PropertyName, value: Any?) = Unit
+
+        override fun cascading(key: PropertyName, value: Any?) {
+            this@cascadingOnly.cascading(key, value)
+        }
+    }

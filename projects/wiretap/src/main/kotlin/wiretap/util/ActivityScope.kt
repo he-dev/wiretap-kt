@@ -41,19 +41,24 @@ abstract class ActivityScope<A : Activity>(
     }
 
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
+        val cascading = add.cascadingOnly()
+
         // core: Cascade root-first so nearer activities overwrite their ancestors.
         reversed().dropLast(1).forEach { ancestor ->
+            (ancestor.activity as? LogPropertySource)?.let { source ->
+                source.logProperties(root, cascading)
+            }
+
             addAnnotatedLogProperties(
                 root.activity.state,
                 ancestor.activity,
-                add,
-                cascadingOnly = true,
+                cascading,
             )
         }
 
-        add(root.activity.role, role)
-        add(root.activity.depth, depth)
-        add(root.activity.path, path)
+        add.localOnly(root.activity.role, role)
+        add.localOnly(root.activity.depth, depth)
+        add.localOnly(root.activity.path, path)
 
         if (variant.attachTraceContext) {
             traceContext.logProperties(root, add)
@@ -140,7 +145,7 @@ private data class StatusSnapshot<A : Activity.Buzz>(
     val durationMs: Long,
 ) : LogPropertySource {
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.activity.durationMs, durationMs)
+        add.localOnly(root.activity.durationMs, durationMs)
     }
 }
 

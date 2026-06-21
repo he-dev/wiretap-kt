@@ -3,13 +3,16 @@ package wiretap.util.buzz
 import wiretap.util.LogEntry
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
+import wiretap.util.ActivityStatusRole
 import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 import wiretap.util.activity
 import wiretap.util.code
 import wiretap.util.durationMs
 import wiretap.util.name
+import wiretap.util.role
 import wiretap.util.status
+import wiretap.util.tags
 import wiretap.util.wiretap
 
 class CreateLogEntry private constructor(
@@ -29,7 +32,16 @@ class CreateLogEntry private constructor(
             *propertySources,
             scope.activity,
             status,
-        )
+        ).toMutableMap().apply {
+            put(root.activity.name.toString(), scope.activity.name)
+            if (scope.activity.tags.isNotEmpty()) {
+                put(root.activity.tags.toString(), scope.activity.tags)
+            }
+            put(root.activity.status.code.toString(), status.code)
+            (status as? ActivityStatusRole)?.let {
+                put(root.activity.status.role.toString(), it.role)
+            }
+        }
         val activityRoot = root.activity
         val get = GetLogProperty { logProperties[it] }
         val messageParts = getMessageParts(activityRoot, get, scope.activity, status)

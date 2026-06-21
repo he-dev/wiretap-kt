@@ -1,8 +1,5 @@
 package wiretap.util
 
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.LogPropertySource
-
 enum class ActivityStatusLevel {
     Info,
     Warning,
@@ -25,16 +22,11 @@ interface Last : ActivityStatusRole {
 
 abstract class ActivityStatus<A : Activity>(
     open val exception: Throwable? = null,
-) : LogPropertySource {
+) {
     open val code: String
         get() = this::class.simpleName ?: "Status"
 
     open val level: ActivityStatusLevel = ActivityStatusLevel.Info
-
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.activity.status.code, code)
-        add(root.activity.status.role, (this as? ActivityStatusRole)?.role)
-    }
 
     class Ready<A : Activity> : ActivityStatus<A>(), First {
         override val code: String = "Ready"

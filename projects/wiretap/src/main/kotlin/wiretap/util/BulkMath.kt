@@ -56,22 +56,22 @@ class BulkMath : LogPropertySource {
             0.0
         }
 
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
+    override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
         if (itemCount == 0) return
 
         val bulk = root.activity.state.bulk
-        add(bulk.append("item_count"), itemCount)
-        add(bulk.append("duration_s"), durationMs / 1_000.0)
-        add(bulk.append("throughput_s"), throughputMs * 1_000.0)
+        localOnly(bulk.append("item_count"), itemCount)
+        localOnly(bulk.append("duration_s"), durationMs / 1_000.0)
+        localOnly(bulk.append("throughput_s"), throughputMs * 1_000.0)
 
         for ((code, count) in statusCounts) {
-            add(bulk.append("${code}_count"), count)
-            add(bulk.append("${code}_rate"), rateOf(code))
+            localOnly(bulk.append("${code}_count"), count)
+            localOnly(bulk.append("${code}_rate"), rateOf(code))
         }
 
-        add(bulk.append("duration_s_mean"), durationMsMean / 1_000.0)
-        add(bulk.append("duration_s_min"), durationMsMin?.div(1_000.0))
-        add(bulk.append("duration_s_max"), durationMsMax?.div(1_000.0))
-        add(bulk.append("duration_s_std_dev"), durationMsStDev / 1_000.0)
+        localOnly(bulk.append("duration_s_mean"), durationMsMean / 1_000.0)
+        localOnly(bulk.append("duration_s_min"), durationMsMin?.div(1_000.0))
+        localOnly(bulk.append("duration_s_max"), durationMsMax?.div(1_000.0))
+        localOnly(bulk.append("duration_s_std_dev"), durationMsStDev / 1_000.0)
     }
 }

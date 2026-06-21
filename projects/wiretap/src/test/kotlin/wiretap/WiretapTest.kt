@@ -16,7 +16,12 @@ import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.util.LogEntry
 import wiretap.util.MessagePart
+import wiretap.util.PropertyName
 import wiretap.util.StateItem
+import wiretap.util.activity
+import wiretap.util.state
+import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.LogPropertySource
 import wiretap.core.logSnap
 import wiretap.util.Wiretap
 
@@ -207,7 +212,9 @@ class WiretapTest {
         val snap = entries.first { it["wiretap.activity.name"] == "SaveRecord" }
         assertEquals("customers.csv", snap["wiretap.activity.state.source"])
         assertEquals("csv", snap["wiretap.activity.state.documentType"])
+        assertEquals("customers.csv", snap["wiretap.activity.state.sourceByInterface"])
         assertNull(snap["wiretap.activity.state.localOnly"])
+        assertNull(snap["wiretap.activity.state.localByInterface"])
     }
 
     @Test
@@ -233,7 +240,12 @@ class WiretapTest {
 
         @StateItem
         val localOnly: String,
-    ) : Activity.Buzz() {
+    ) : Activity.Buzz(), LogPropertySource {
+        override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+            cascading(root.activity.state.append("sourceByInterface"), source)
+            localOnly(root.activity.state.append("localByInterface"), this@ImportDocumentWithState.localOnly)
+        }
+
         class Okay : ActivityStatus.Okay<ImportDocumentWithState>()
     }
 

@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.BulkMath
 import wiretap.util.PropertyName
-import wiretap.util.buzz.AddLogProperty
+import wiretap.util.buzz.getLogProperties
 
 class BulkMathTest {
     @Test
@@ -37,11 +37,9 @@ class BulkMathTest {
 
     @Test
     fun omitsPropertiesUntilAnItemCompletes() {
-        val properties = linkedMapOf<String, Any?>()
-
-        BulkMath().logProperties(
+        val properties = getLogProperties(
             PropertyName("wiretap"),
-            AddLogProperty(properties::put),
+            BulkMath(),
         )
 
         assertEquals(emptyMap(), properties)
@@ -49,12 +47,11 @@ class BulkMathTest {
 
     @Test
     fun publishesAllBulkProperties() {
-        val properties = linkedMapOf<String, Any?>()
         val math = BulkMath()
         math.count("Okay", 100)
-        math.logProperties(
+        val properties = getLogProperties(
             PropertyName("wiretap"),
-            AddLogProperty(properties::put),
+            math,
         )
 
         assertEquals(1, properties["wiretap.activity.state.bulk.item_count"])

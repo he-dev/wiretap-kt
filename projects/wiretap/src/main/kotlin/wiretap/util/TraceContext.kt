@@ -11,9 +11,11 @@ class TraceContext internal constructor(
     val parentSpanId: String?,
 ) : LogPropertySource {
     override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add(root.traceId, traceId)
-        add(root.spanId, spanId)
-        parentSpanId?.let { add(root.parentSpanId, it) }
+        with(add) {
+            localOnly(root.traceId, traceId)
+            localOnly(root.spanId, spanId)
+            parentSpanId?.let { localOnly(root.parentSpanId, it) }
+        }
     }
 
     companion object {
