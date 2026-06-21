@@ -124,14 +124,19 @@ class WiretapTest {
         }
 
         val final = entries.last()
+        val initial = entries.first()
         assertEquals(listOf("DeleteFiles", "DeleteFiles"), entries.map { it["wiretap.activity.name"] })
         assertEquals("DeleteFiles", final["wiretap.activity.name"])
         assertEquals("external-trace", final["wiretap.trace_id"])
+        assertEquals(0, initial["wiretap.activity.state.bulk.item_count"])
+        assertEquals(0.0, initial["wiretap.activity.state.bulk.duration_s"])
+        assertEquals(0.0, initial["wiretap.activity.state.bulk.throughput_s"])
         assertEquals(2, final["wiretap.activity.state.bulk.item_count"])
-        assertEquals(1, final["wiretap.activity.state.bulk.okay_count"])
-        assertEquals(1, final["wiretap.activity.state.bulk.fail_count"])
         assertNotNull(final["wiretap.activity.state.bulk.duration_s"])
         assertNotNull(final["wiretap.activity.state.bulk.throughput_s"])
+        assertEquals(true, final.message.contains("Item Count: 2"))
+        assertEquals(true, final.message.contains("Item Duration:"))
+        assertEquals(true, final.message.contains("Throughput:"))
     }
 
     @Test

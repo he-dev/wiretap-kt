@@ -4,10 +4,8 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.LogPropertySource
 
-class BulkMath : LogPropertySource {
+class BulkMath {
     private val statusCounts = linkedMapOf<String, Int>()
     private var durationM2 = 0.0
 
@@ -56,22 +54,4 @@ class BulkMath : LogPropertySource {
             0.0
         }
 
-    override fun AddLogProperty.logProperties(root: PropertyName) {
-        if (itemCount == 0) return
-
-        val bulk = root.activity.state.bulk
-        localOnly(bulk.append("item_count"), itemCount)
-        localOnly(bulk.append("duration_s"), durationMs / 1_000.0)
-        localOnly(bulk.append("throughput_s"), throughputMs * 1_000.0)
-
-        for ((code, count) in statusCounts) {
-            localOnly(bulk.append("${code}_count"), count)
-            localOnly(bulk.append("${code}_rate"), rateOf(code))
-        }
-
-        localOnly(bulk.append("duration_s_mean"), durationMsMean / 1_000.0)
-        localOnly(bulk.append("duration_s_min"), durationMsMin?.div(1_000.0))
-        localOnly(bulk.append("duration_s_max"), durationMsMax?.div(1_000.0))
-        localOnly(bulk.append("duration_s_std_dev"), durationMsStDev / 1_000.0)
-    }
 }

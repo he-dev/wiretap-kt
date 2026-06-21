@@ -29,3 +29,16 @@ internal fun ActivityLogger.warnAboutNonPublicAnnotatedProperty(
         ),
     )
 }
+
+internal fun ActivityLogger.warnAboutDuplicateLogProperty(
+    sourceType: KClass<*>,
+    property: PropertyName,
+) {
+    log(
+        LogEntry(
+            level = ActivityStatusLevel.Warning,
+            message = "Log-property source '${sourceType.qualifiedName}' pushed '$property' more than once; the first value was kept.",
+            properties = emptyMap(),
+        ),
+    )
+}

@@ -12,10 +12,10 @@ import wiretap.util.LogEntry
 import wiretap.util.PropertyName
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
+import wiretap.util.activity
+import wiretap.util.state
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.addAnnotatedLogProperties
-import wiretap.util.buzz.cascadingOnly
 import wiretap.util.buzz.getLogProperties
 
 class GetLogPropertiesTest {
@@ -34,26 +34,45 @@ class GetLogPropertiesTest {
     }
 
     @Test
-    fun addsOnlyCascadingStateItemsFromAncestors() {
-        val properties = linkedMapOf<String, Any?>()
-
-        addAnnotatedLogProperties(
-            PropertyName("state"),
-            Source(local = "local", cascading = "shared"),
-            object : AddLogProperty {
-                override fun localOnly(key: PropertyName, value: Any?) {
-                    value?.let { properties[key.toString()] = it }
-                }
-
-                override fun cascading(key: PropertyName, value: Any?) {
-                    localOnly(key, value)
-                }
-            }.cascadingOnly(),
+    fun nearestInterfaceClaimWinsAndCanSuppressFallbacksWithNull() {
+        val parent = SnapScope(logger, ParentActivity(), parent = null)
+        val properties = getLogProperties(
+            PropertyName("wiretap"),
+            SnapScope(logger, NullingActivity(), parent),
+            NullingActivity.Okay(),
         )
 
+        assertNull(properties["wiretap.activity.state.shared"])
+        assertNull(properties["wiretap.activity.state.local"])
+    }
+
+    @Test
+    fun warnsWhenCurrentInterfacePushesTheSameKeyTwice() {
+        val diagnostics = mutableListOf<LogEntry>()
+        val previous = Configuration.diagnosticLogger
+        val diagnosticLogger = object : ActivityLogger {
+            override fun log(entry: LogEntry) {
+                diagnostics += entry
+            }
+        }
+
+        try {
+            Configuration.logDiagnosticsWith(diagnosticLogger)
+            val properties = getLogProperties(
+                PropertyName("wiretap"),
+                SnapScope(logger, DuplicateActivity(), parent = null),
+                DuplicateActivity.Okay(),
+            )
+
+            assertEquals("first", properties["wiretap.activity.state.duplicate"])
+        } finally {
+            Configuration.logDiagnosticsWith(previous)
+        }
+
         assertEquals(
-            mapOf<String, Any?>("state.cascading" to "shared"),
-            properties,
+            "Log-property source '${DuplicateActivity::class.qualifiedName}' pushed " +
+                "'wiretap.activity.state.duplicate' more than once; the first value was kept.",
+            diagnostics.single().message,
         )
     }
 
@@ -107,6 +126,35 @@ class GetLogPropertiesTest {
 
     class PropertyActivity : Activity.Snap() {
         class Okay : ActivityStatus.Okay<PropertyActivity>()
+    }
+
+    class ParentActivity(
+        @StateItem(name = "shared", cascade = true)
+        val shared: String = "parent",
+
+        @StateItem(name = "local")
+        val local: String = "parent-local",
+    ) : Activity.Snap()
+
+    class NullingActivity(
+        @StateItem(name = "shared", cascade = true)
+        val shared: String = "annotation",
+    ) : Activity.Snap(), LogPropertySource {
+        override fun AddLogProperty.logProperties(root: PropertyName) {
+            cascading(root.activity.state.append("shared"), null)
+        }
+
+        class Okay : ActivityStatus.Okay<NullingActivity>()
+    }
+
+    class DuplicateActivity : Activity.Snap(), LogPropertySource {
+        override fun AddLogProperty.logProperties(root: PropertyName) {
+            val key = root.activity.state.append("duplicate")
+            localOnly(key, "first")
+            localOnly(key, "second")
+        }
+
+        class Okay : ActivityStatus.Okay<DuplicateActivity>()
     }
 
     private val logger = object : ActivityLogger {

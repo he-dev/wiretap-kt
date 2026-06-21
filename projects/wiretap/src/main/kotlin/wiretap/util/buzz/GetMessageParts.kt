@@ -14,8 +14,6 @@ fun getMessageParts(
     val add = AddMessagePart(parts::push)
 
     sources.asSequence().filterNotNull().forEach { source ->
-        (source as? MessagePartSource)?.messageParts(root, get, add)
-
         annotatedProperties<MessagePart>(source)
             .mapNotNull { property ->
                 property.value(source)?.let { property to it }
@@ -32,6 +30,8 @@ fun getMessageParts(
                     ),
                 )
             }
+
+        (source as? MessagePartSource)?.messageParts(root, get, add)
     }
 
     return parts

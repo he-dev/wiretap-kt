@@ -126,8 +126,6 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     parent: ActivityScope<*>?,
     traceId: String? = null,
 ) : BuzzScope<B>(logger, activity, parent, traceId = traceId) {
-    internal val math = BulkMath()
-
     override val role: String = "bulk"
 
     override fun push(): BulkScope<B, I> {
@@ -140,7 +138,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
         omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
     ): ItemScope<I> =
         // core: Items report their final status into the parent bulk math instead of owning a separate summary.
-        ItemScope.push(logger, activity, parent = this, math, omitStatuses)
+        ItemScope.push(logger, activity, parent = this, this.activity.math, omitStatuses)
 
     fun <R> beginItem(
         activity: I,
