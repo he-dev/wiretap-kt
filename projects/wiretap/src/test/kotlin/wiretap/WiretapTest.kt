@@ -2,20 +2,13 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import wiretap.util.ActivityLogger
 import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
-import wiretap.util.BulkStat
-import wiretap.util.BulkStatsOptIn
-import wiretap.util.BulkDurationUnit
 import wiretap.util.BulkItem
-import wiretap.util.BulkScopeProfile
-import wiretap.util.BulkThroughputUnit
-import wiretap.util.BulkUnit
 import wiretap.util.CountOnlyBulkItem
 import wiretap.util.OmitStatus
 import wiretap.core.beginBuzz
@@ -118,7 +111,7 @@ class WiretapTest {
         assertEquals(1, final["wiretap.activity.state.bulk.okay_count"])
         assertEquals(1, final["wiretap.activity.state.bulk.fail_count"])
         assertNotNull(final["wiretap.activity.state.bulk.duration_s"])
-        assertNotNull(final["wiretap.activity.state.bulk.throughput_min"])
+        assertNotNull(final["wiretap.activity.state.bulk.throughput_s"])
     }
 
     @Test
@@ -155,30 +148,6 @@ class WiretapTest {
             .filter { it["wiretap.activity.name"] == "DeleteFile" }
             .map { it["wiretap.activity.status.code"] }
         assertEquals(listOf("Ready", "Okay"), itemStatuses)
-    }
-
-    @Test
-    fun explicitBulkProfileOverridesAnnotations() {
-        val entries = mutableListOf<LogEntry>()
-        val logger = TestActivityLogger(entries)
-        val profile = BulkScopeProfile(
-            stats = setOf(BulkStat.RateByStatus),
-            durationUnit = BulkUnit.Milliseconds,
-            throughputUnit = BulkUnit.Seconds,
-        )
-
-        logger.beginBulk(DeleteFiles(), profile) {
-            beginItem(DeleteFile()) {
-                setStatus(DeleteFile.Okay())
-            }
-            setStatus(DeleteFiles.Okay())
-        }
-
-        val final = entries.last()
-        assertNotNull(final["wiretap.activity.state.bulk.duration_ms"])
-        assertNotNull(final["wiretap.activity.state.bulk.throughput_s"])
-        assertEquals(1.0, final["wiretap.activity.state.bulk.okay_rate"])
-        assertFalse(final.containsKey("wiretap.activity.state.bulk.okay_count"))
     }
 
     @Test
@@ -267,9 +236,6 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<ParseDocumentWithState>()
     }
 
-    @BulkStatsOptIn(BulkStat.CountByStatus)
-    @BulkDurationUnit(BulkUnit.Seconds)
-    @BulkThroughputUnit(BulkUnit.Minutes)
     class DeleteFiles : Activity.Bulk<DeleteFile>() {
         class Okay : ActivityStatus.Okay<DeleteFiles>()
     }

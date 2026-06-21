@@ -7,54 +7,45 @@ import kotlin.math.sqrt
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
 
-class BulkMath(
-    private val optedIn: Set<BulkStat> = emptySet(),
-    val durationUnit: BulkUnit = BulkUnit.Milliseconds,
-    val throughputUnit: BulkUnit = BulkUnit.Seconds,
-) : LogPropertySource {
+class BulkMath : LogPropertySource {
     private val statusCounts = linkedMapOf<String, Int>()
-    private var durationMeanValue = 0.0
     private var durationM2 = 0.0
 
     var itemCount: Int = 0
         private set
 
-    var duration: Double = 0.0
+    var durationMs: Long = 0
         private set
 
-    var durationMinimum: Double? = null
+    var durationMsMin: Long? = null
         private set
 
-    var durationMaximum: Double? = null
+    var durationMsMax: Long? = null
         private set
 
-    val durationMean: Double
-        get() = durationMeanValue
+    var durationMsMean: Double = 0.0
+        private set
 
-    val durationStDev: Double
+    val durationMsStDev: Double
         get() = if (itemCount > 1) sqrt(durationM2 / (itemCount - 1)) else 0.0
 
-    val throughput: Double
-        get() {
-            val durationForThroughput = durationUnit.convert(duration, throughputUnit)
-            return if (durationForThroughput > 0) itemCount / durationForThroughput else 0.0
-        }
+    val throughputMs: Double
+        get() = if (durationMs > 0) itemCount / durationMs.toDouble() else 0.0
 
     fun count(code: String, durationMs: Long) {
         // util: Bulk math records item outcomes only after each item reaches its final status.
-        val measuredDuration = durationUnit.fromMilliseconds(durationMs.toDouble())
         itemCount += 1
-        duration += measuredDuration
-        durationMinimum = durationMinimum?.let { min(it, measuredDuration) } ?: measuredDuration
-        durationMaximum = durationMaximum?.let { max(it, measuredDuration) } ?: measuredDuration
+        this.durationMs += durationMs
+        durationMsMin = durationMsMin?.let { min(it, durationMs) } ?: durationMs
+        durationMsMax = durationMsMax?.let { max(it, durationMs) } ?: durationMs
 
         val normalizedCode = code.lowercase(Locale.ROOT)
         statusCounts[normalizedCode] = statusCounts.getOrElse(normalizedCode) { 0 } + 1
 
         // util: Welford's algorithm tracks variance without retaining every item duration.
-        val delta = measuredDuration - durationMeanValue
-        durationMeanValue += delta / itemCount
-        val delta2 = measuredDuration - durationMeanValue
+        val delta = durationMs.toDouble() - durationMsMean
+        durationMsMean += delta / itemCount
+        val delta2 = durationMs.toDouble() - durationMsMean
         durationM2 += delta * delta2
     }
 
@@ -69,32 +60,18 @@ class BulkMath(
         if (itemCount == 0) return
 
         val bulk = root.activity.state.bulk
-        val durationName = "duration_${durationUnit.suffix}"
         add(bulk.append("item_count"), itemCount)
-        add(bulk.append(durationName), duration)
-        add(bulk.append("throughput_${throughputUnit.suffix}"), throughput)
+        add(bulk.append("duration_s"), durationMs / 1_000.0)
+        add(bulk.append("throughput_s"), throughputMs * 1_000.0)
 
         for ((code, count) in statusCounts) {
-            if (BulkStat.CountByStatus in optedIn) {
-                add(bulk.append("${code}_count"), count)
-            }
-
-            if (BulkStat.RateByStatus in optedIn) {
-                add(bulk.append("${code}_rate"), rateOf(code))
-            }
+            add(bulk.append("${code}_count"), count)
+            add(bulk.append("${code}_rate"), rateOf(code))
         }
 
-        if (BulkStat.DurationMean in optedIn) {
-            add(bulk.append("${durationName}_mean"), durationMean)
-        }
-
-        if (BulkStat.DurationExtremes in optedIn) {
-            add(bulk.append("${durationName}_minimum"), durationMinimum)
-            add(bulk.append("${durationName}_maximum"), durationMaximum)
-        }
-
-        if (BulkStat.DurationStDev in optedIn) {
-            add(bulk.append("${durationName}_std_dev"), durationStDev)
-        }
+        add(bulk.append("duration_s_mean"), durationMsMean / 1_000.0)
+        add(bulk.append("duration_s_min"), durationMsMin?.div(1_000.0))
+        add(bulk.append("duration_s_max"), durationMsMax?.div(1_000.0))
+        add(bulk.append("duration_s_std_dev"), durationMsStDev / 1_000.0)
     }
 }

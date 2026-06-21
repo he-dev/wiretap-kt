@@ -2,16 +2,13 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import wiretap.util.BulkStat
 import wiretap.util.BulkMath
-import wiretap.util.BulkUnit
 import wiretap.util.PropertyName
 import wiretap.util.buzz.AddLogProperty
 
 class BulkMathTest {
     @Test
-    fun calculatesDurationStatisticsWithWelfordsAlgorithm() {
+    fun calculatesDurationStatisticsInMilliseconds() {
         val math = BulkMath()
 
         math.count("Okay", 100)
@@ -19,12 +16,12 @@ class BulkMathTest {
         math.count("Okay", 300)
 
         assertEquals(3, math.itemCount)
-        assertEquals(600.0, math.duration)
-        assertEquals(100.0, math.durationMinimum)
-        assertEquals(300.0, math.durationMaximum)
-        assertEquals(200.0, math.durationMean)
-        assertEquals(100.0, math.durationStDev)
-        assertEquals(5.0, math.throughput)
+        assertEquals(600L, math.durationMs)
+        assertEquals(100L, math.durationMsMin)
+        assertEquals(300L, math.durationMsMax)
+        assertEquals(200.0, math.durationMsMean)
+        assertEquals(100.0, math.durationMsStDev)
+        assertEquals(0.005, math.throughputMs)
         assertEquals(2.0 / 3.0, math.rateOf("Okay"))
         assertEquals(1.0 / 3.0, math.rateOf("Fail"))
     }
@@ -35,20 +32,7 @@ class BulkMathTest {
 
         math.count("Okay", 25)
 
-        assertEquals(0.0, math.durationStDev)
-    }
-
-    @Test
-    fun keepsDurationAndThroughputUnitsIndependent() {
-        val math = BulkMath(
-            durationUnit = BulkUnit.Seconds,
-            throughputUnit = BulkUnit.Minutes,
-        )
-
-        math.count("Okay", 120_000)
-
-        assertEquals(120.0, math.duration)
-        assertEquals(0.5, math.throughput)
+        assertEquals(0.0, math.durationMsStDev)
     }
 
     @Test
@@ -64,72 +48,23 @@ class BulkMathTest {
     }
 
     @Test
-    fun publishesBaselinePropertiesWithoutOptIns() {
-        val properties = propertiesFrom()
-
-        assertEquals(
-            setOf(
-                "wiretap.activity.state.bulk.item_count",
-                "wiretap.activity.state.bulk.duration_ms",
-                "wiretap.activity.state.bulk.throughput_s",
-            ),
-            properties.keys,
-        )
-    }
-
-    @Test
-    fun publishesStatusStatsIndependently() {
-        val counts = propertiesFrom(BulkStat.CountByStatus)
-        val rates = propertiesFrom(BulkStat.RateByStatus)
-
-        assertEquals(1, counts["wiretap.activity.state.bulk.okay_count"])
-        assertFalse(counts.containsKey("wiretap.activity.state.bulk.okay_rate"))
-        assertEquals(1.0, rates["wiretap.activity.state.bulk.okay_rate"])
-        assertFalse(rates.containsKey("wiretap.activity.state.bulk.okay_count"))
-    }
-
-    @Test
-    fun publishesOptedInDurationStats() {
-        val properties = propertiesFrom(
-            BulkStat.DurationMean,
-            BulkStat.DurationExtremes,
-            BulkStat.DurationStDev,
-        )
-
-        assertEquals(100.0, properties["wiretap.activity.state.bulk.duration_ms_mean"])
-        assertEquals(100.0, properties["wiretap.activity.state.bulk.duration_ms_minimum"])
-        assertEquals(100.0, properties["wiretap.activity.state.bulk.duration_ms_maximum"])
-        assertEquals(0.0, properties["wiretap.activity.state.bulk.duration_ms_std_dev"])
-    }
-
-    @Test
-    fun publishesConfiguredUnitsInPropertyNames() {
+    fun publishesAllBulkProperties() {
         val properties = linkedMapOf<String, Any?>()
-        val math = BulkMath(
-            durationUnit = BulkUnit.Seconds,
-            throughputUnit = BulkUnit.Minutes,
-        )
-        math.count("Okay", 120_000)
-
-        math.logProperties(
-            PropertyName("wiretap"),
-            AddLogProperty(properties::put),
-        )
-
-        assertEquals(120.0, properties["wiretap.activity.state.bulk.duration_s"])
-        assertEquals(0.5, properties["wiretap.activity.state.bulk.throughput_min"])
-    }
-
-    private fun propertiesFrom(
-        vararg optedIn: BulkStat,
-    ): Map<String, Any?> {
-        val properties = linkedMapOf<String, Any?>()
-        val math = BulkMath(optedIn.toSet())
+        val math = BulkMath()
         math.count("Okay", 100)
         math.logProperties(
             PropertyName("wiretap"),
             AddLogProperty(properties::put),
         )
-        return properties
+
+        assertEquals(1, properties["wiretap.activity.state.bulk.item_count"])
+        assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s"])
+        assertEquals(10.0, properties["wiretap.activity.state.bulk.throughput_s"])
+        assertEquals(1, properties["wiretap.activity.state.bulk.okay_count"])
+        assertEquals(1.0, properties["wiretap.activity.state.bulk.okay_rate"])
+        assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s_mean"])
+        assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s_min"])
+        assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s_max"])
+        assertEquals(0.0, properties["wiretap.activity.state.bulk.duration_s_std_dev"])
     }
 }

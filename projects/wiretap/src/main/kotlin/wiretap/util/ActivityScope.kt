@@ -130,14 +130,9 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     logger: ActivityLogger,
     activity: B,
     parent: ActivityScope<*>?,
-    private val profile: BulkScopeProfile,
     traceId: String? = null,
 ) : BuzzScope<B>(logger, activity, parent, traceId = traceId) {
-    private val math = BulkMath(
-        optedIn = profile.stats,
-        durationUnit = profile.durationUnit,
-        throughputUnit = profile.throughputUnit,
-    )
+    private val math = BulkMath()
 
     override val role: String = "bulk"
 
@@ -170,10 +165,9 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
             logger: ActivityLogger,
             activity: B,
             parent: ActivityScope<*>? = ActivityScope.current(),
-            profile: BulkScopeProfile,
             traceId: String? = null,
         ): BulkScope<B, I> =
-            BulkScope(logger, activity, parent, profile, traceId).push()
+            BulkScope(logger, activity, parent, traceId).push()
     }
 }
 
