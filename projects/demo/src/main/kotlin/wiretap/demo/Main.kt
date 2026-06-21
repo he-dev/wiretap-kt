@@ -78,7 +78,7 @@ fun main() {
 class ImportDocument(private val source: String) : Activity.Buzz(), LogPropertySource, MessagePartSource {
     override val tags: Set<String> = setOf("import")
 
-    override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+    override fun AddLogProperty.logProperties(root: PropertyName) {
         cascading(root.activity.state.append("source"), source)
         localOnly(root.activity.state.append("mode"), "document")
     }

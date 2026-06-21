@@ -241,7 +241,7 @@ class WiretapTest {
         @StateItem
         val localOnly: String,
     ) : Activity.Buzz(), LogPropertySource {
-        override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+        override fun AddLogProperty.logProperties(root: PropertyName) {
             cascading(root.activity.state.append("sourceByInterface"), source)
             localOnly(root.activity.state.append("localByInterface"), this@ImportDocumentWithState.localOnly)
         }

@@ -56,7 +56,7 @@ class BulkMath : LogPropertySource {
             0.0
         }
 
-    override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+    override fun AddLogProperty.logProperties(root: PropertyName) {
         if (itemCount == 0) return
 
         val bulk = root.activity.state.bulk

@@ -2,11 +2,15 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import wiretap.util.Activity
 import wiretap.util.ActivityLogger
+import wiretap.util.ActivityStatus
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
 import wiretap.util.LogEntry
 import wiretap.util.PropertyName
+import wiretap.util.SnapScope
 import wiretap.util.StateItem
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
@@ -19,6 +23,8 @@ class GetLogPropertiesTest {
     fun getsPropertiesFromInterfacesAndAnnotations() {
         val properties = getLogProperties(
             PropertyName("wiretap"),
+            SnapScope(logger, PropertyActivity(), parent = null),
+            PropertyActivity.Okay(),
             Source(local = "local", cascading = "shared"),
         )
 
@@ -63,8 +69,13 @@ class GetLogPropertiesTest {
 
         try {
             Configuration.logDiagnosticsWith(logger)
-            val properties = getLogProperties(PropertyName("wiretap"), PrivateSource("hidden"))
-            assertEquals(emptyMap(), properties)
+            val properties = getLogProperties(
+                PropertyName("wiretap"),
+                SnapScope(logger, PropertyActivity(), parent = null),
+                PropertyActivity.Okay(),
+                PrivateSource("hidden"),
+            )
+            assertNull(properties["wiretap.activity.state.hidden"])
         } finally {
             Configuration.logDiagnosticsWith(previous)
         }
@@ -84,7 +95,7 @@ class GetLogPropertiesTest {
         @StateItem(cascade = true)
         val cascading: String,
     ) : LogPropertySource {
-        override fun logProperties(root: PropertyName, add: AddLogProperty) = with(add) {
+        override fun AddLogProperty.logProperties(root: PropertyName) {
             localOnly(root.append("source"), "interface")
         }
     }
@@ -93,4 +104,12 @@ class GetLogPropertiesTest {
         @StateItem
         private val hidden: String,
     )
+
+    class PropertyActivity : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<PropertyActivity>()
+    }
+
+    private val logger = object : ActivityLogger {
+        override fun log(entry: LogEntry) = Unit
+    }
 }

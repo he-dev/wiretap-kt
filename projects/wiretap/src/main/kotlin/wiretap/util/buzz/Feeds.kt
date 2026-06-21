@@ -39,7 +39,7 @@ fun interface GetLogProperty {
 }
 
 interface LogPropertySource {
-    fun logProperties(root: PropertyName, add: AddLogProperty)
+    fun AddLogProperty.logProperties(root: PropertyName)
 }
 
 interface MessagePartSource {

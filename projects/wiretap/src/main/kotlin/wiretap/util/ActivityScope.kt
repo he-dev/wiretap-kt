@@ -9,7 +9,7 @@ abstract class ActivityScope<A : Activity>(
     val activity: A,
     val parent: ActivityScope<*>?,
     traceId: String? = null,
-) : AutoCloseable, LogPropertySource, Iterable<ActivityScope<*>> {
+) : AutoCloseable, Iterable<ActivityScope<*>> {
     private var ambient: AutoCloseable? = null
     private val variant = Configuration.resolve(activity)
 
@@ -24,7 +24,7 @@ abstract class ActivityScope<A : Activity>(
     val path: String
         get() = reversed().joinToString("/") { it.activity.name }
 
-    protected abstract val role: String
+    abstract val role: String
 
     open val durationMs: Long? = null
 
@@ -38,31 +38,6 @@ abstract class ActivityScope<A : Activity>(
 
     protected fun log(status: ActivityStatus<A>, vararg propertySources: Any?) {
         logger.log(variant.createLogEntry.from(this, status, *propertySources))
-    }
-
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        val cascading = add.cascadingOnly()
-
-        // core: Cascade root-first so nearer activities overwrite their ancestors.
-        reversed().dropLast(1).forEach { ancestor ->
-            (ancestor.activity as? LogPropertySource)?.let { source ->
-                source.logProperties(root, cascading)
-            }
-
-            addAnnotatedLogProperties(
-                root.activity.state,
-                ancestor.activity,
-                cascading,
-            )
-        }
-
-        add.localOnly(root.activity.role, role)
-        add.localOnly(root.activity.depth, depth)
-        add.localOnly(root.activity.path, path)
-
-        if (variant.attachTraceContext) {
-            traceContext.logProperties(root, add)
-        }
     }
 
     override fun close() {
@@ -140,14 +115,10 @@ open class BuzzScope<A : Activity.Buzz>(
     }
 }
 
-private data class StatusSnapshot<A : Activity.Buzz>(
+internal data class StatusSnapshot<A : Activity.Buzz>(
     val status: ActivityStatus<A>,
     val durationMs: Long,
-) : LogPropertySource {
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        add.localOnly(root.activity.durationMs, durationMs)
-    }
-}
+)
 
 class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     logger: ActivityLogger,
@@ -155,7 +126,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     parent: ActivityScope<*>?,
     traceId: String? = null,
 ) : BuzzScope<B>(logger, activity, parent, traceId = traceId) {
-    private val math = BulkMath()
+    internal val math = BulkMath()
 
     override val role: String = "bulk"
 
@@ -177,11 +148,6 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
         block: (ItemScope<I>) -> R,
     ): R =
         beginItem(activity, omitStatuses).use(block)
-
-    override fun logProperties(root: PropertyName, add: AddLogProperty) {
-        super.logProperties(root, add)
-        math.logProperties(root, add)
-    }
 
     companion object {
         fun <B : Activity.Bulk<I>, I : Activity.Buzz> push(

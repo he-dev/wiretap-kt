@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.BulkMath
 import wiretap.util.PropertyName
-import wiretap.util.buzz.getLogProperties
+import wiretap.util.buzz.AddLogProperty
 
 class BulkMathTest {
     @Test
@@ -37,10 +37,7 @@ class BulkMathTest {
 
     @Test
     fun omitsPropertiesUntilAnItemCompletes() {
-        val properties = getLogProperties(
-            PropertyName("wiretap"),
-            BulkMath(),
-        )
+        val properties = propertiesFrom(BulkMath())
 
         assertEquals(emptyMap(), properties)
     }
@@ -49,10 +46,7 @@ class BulkMathTest {
     fun publishesAllBulkProperties() {
         val math = BulkMath()
         math.count("Okay", 100)
-        val properties = getLogProperties(
-            PropertyName("wiretap"),
-            math,
-        )
+        val properties = propertiesFrom(math)
 
         assertEquals(1, properties["wiretap.activity.state.bulk.item_count"])
         assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s"])
@@ -64,4 +58,19 @@ class BulkMathTest {
         assertEquals(0.1, properties["wiretap.activity.state.bulk.duration_s_max"])
         assertEquals(0.0, properties["wiretap.activity.state.bulk.duration_s_std_dev"])
     }
+
+    private fun propertiesFrom(math: BulkMath): Map<String, Any?> =
+        buildMap {
+            val add = object : AddLogProperty {
+                override fun localOnly(key: PropertyName, value: Any?) {
+                    value?.let { put(key.toString(), it) }
+                }
+
+                override fun cascading(key: PropertyName, value: Any?) {
+                    localOnly(key, value)
+                }
+            }
+
+            with(math) { add.logProperties(PropertyName("wiretap")) }
+        }
 }
