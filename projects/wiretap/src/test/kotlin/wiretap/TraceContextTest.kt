@@ -2,7 +2,6 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -14,14 +13,13 @@ import wiretap.util.BuzzScope
 import wiretap.util.Configuration
 import wiretap.util.LogEntry
 import wiretap.util.SnapScope
-import wiretap.util.buzz.createLogEntryBy
 
 class TraceContextTest {
     @Test
     fun propagatesTraceContextAcrossScopes() {
         val parent = BuzzScope(logger, ParentActivity(), parent = null)
         val child = SnapScope(logger, ChildActivity(), parent)
-        val createLogEntry = createLogEntryBy()
+        val createLogEntry = Configuration.Variant().createLogEntry
 
         parent.activity.start()
         parent.activity.setStatus(ParentActivity.Okay())
@@ -55,32 +53,12 @@ class TraceContextTest {
         }
     }
 
-    @Test
-    fun omitsTraceContextWhenDisabled() {
-        Configuration.addNamed("without-trace-context") {
-            Configuration.Variant(attachTraceContext = false)
-        }
-        val scope = SnapScope(logger, UntracedActivity(), parent = null)
-
-        scope.activity.setStatus(UntracedActivity.Okay())
-        val entry = createLogEntryBy().from(listOf(scope.activity), traceContext = null)
-
-        assertFalse(entry.properties.keys.any { it.startsWith("wiretap.trace_") })
-        assertFalse(entry.properties.containsKey("wiretap.span_id"))
-        assertFalse(entry.properties.containsKey("wiretap.parent_span_id"))
-    }
-
     private class ParentActivity : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ParentActivity>()
     }
 
     private class ChildActivity : Activity.Snap() {
         class Okay : ActivityStatus.Okay<ChildActivity>()
-    }
-
-    @Configuration.Use("without-trace-context")
-    private class UntracedActivity : Activity.Snap() {
-        class Okay : ActivityStatus.Okay<UntracedActivity>()
     }
 
     private companion object {

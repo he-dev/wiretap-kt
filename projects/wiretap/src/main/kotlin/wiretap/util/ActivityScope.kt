@@ -25,7 +25,7 @@ abstract class ActivityScope<A : Activity>(
         logger.log(
             variant.createLogEntry.from(
                 activities = map { it.activity },
-                traceContext = traceContext.takeIf { variant.attachTraceContext },
+                traceContext = traceContext,
             ),
         )
     }

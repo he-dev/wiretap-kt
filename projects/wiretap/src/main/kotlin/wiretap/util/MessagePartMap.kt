@@ -1,8 +1,6 @@
-package wiretap.util.buzz
+package wiretap.util
 
 import java.util.Locale
-import wiretap.util.MessagePartOptions
-import wiretap.util.PropertyName
 
 class MessagePartMap internal constructor(
     private val entriesByName: MutableMap<PropertyName, Entry> = linkedMapOf(),

@@ -23,33 +23,11 @@ import wiretap.util.buzz.AddMessagePart
 import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.MessagePartSource
-import wiretap.util.buzz.composeMessageBy
-import wiretap.util.buzz.createLogEntryBy
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
 fun main() {
     Configuration.useDiagnosticsLogger()
-
-    createLogEntryBy {
-        root = PropertyName("wiretap", "demo")
-        registerMessageParts {
-            parts.push(root.activity.append("test"), "Demo")
-        }
-    }
-
-    composeMessageBy {
-        messageParts {
-            push(root.activity.append("test"), "Demo")
-        }
-        arrange {
-            positional(root.activity.append("test"))
-            remaining()
-        }
-        join {
-            joinToString(" | ") { it.value.toString() }
-        }
-    }
 
     logger.info("{} demo", Wiretap.name)
 

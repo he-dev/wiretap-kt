@@ -9,7 +9,6 @@ import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
 import wiretap.util.LogEntry
-import wiretap.util.buzz.createLogEntryBy
 
 class ConfigurationTest {
     @Test
@@ -39,7 +38,7 @@ class ConfigurationTest {
     @Test
     fun setsDefaultVariant() {
         val previous = Configuration.default
-        val replacement = Configuration.Variant(createLogEntry = createLogEntryBy())
+        val replacement = Configuration.Variant()
 
         try {
             val configured = Configuration.setDefault { replacement }
@@ -53,7 +52,7 @@ class ConfigurationTest {
 
     @Test
     fun addsAndResolvesNamedVariant() {
-        val variant = Configuration.Variant(createLogEntry = createLogEntryBy())
+        val variant = Configuration.Variant()
 
         val configured = Configuration.addNamed("compact") { variant }
         val resolved = Configuration.resolve(CompactActivity())
@@ -65,7 +64,7 @@ class ConfigurationTest {
 
     @Test
     fun resolvesNamedVariantAddedAfterCachedFallback() {
-        val variant = Configuration.Variant(createLogEntry = createLogEntryBy())
+        val variant = Configuration.Variant()
 
         assertSame(Configuration.default, Configuration.resolve(LateActivity()))
 

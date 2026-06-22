@@ -1,5 +1,6 @@
 package wiretap.util.buzz
 
+import wiretap.util.Activity
 import wiretap.util.PropertyName
 import wiretap.util.activity
 
@@ -12,10 +13,10 @@ class ComposeMessage internal constructor(
     operator fun invoke(
         root: PropertyName,
         properties: Map<String, Any?>,
-        vararg sources: Any?,
+        activity: Activity,
     ): String {
         val get = GetLogProperty { properties[it] }
-        val parts = getMessageParts(root.activity, get, *sources)
+        val parts = getMessageParts(root.activity, get, activity, activity.status)
         val context = MessagePartsDsl(
             root = root,
             getLogProperty = get,

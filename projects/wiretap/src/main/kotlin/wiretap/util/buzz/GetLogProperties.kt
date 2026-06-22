@@ -100,11 +100,9 @@ fun getLogProperties(
         current.localOnly(root.activity.path, activities.asReversed().joinToString("/") { it.name })
         current.localOnly(root.activity.name, activity.name)
         current.localOnly(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
+        current.localOnly(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
         current.localOnly(root.activity.status.code, status.code)
         current.localOnly(root.activity.status.role, (status as? ActivityStatusRole)?.role)
-
-        // TODO: Publish activity-owned duration through annotations after framework properties leave this collector.
-        current.localOnly(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
 
         // core: A null trace context means the resolved configuration omitted trace publication.
         if (traceContext != null) {

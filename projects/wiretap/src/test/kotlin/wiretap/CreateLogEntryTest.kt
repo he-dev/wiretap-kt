@@ -7,17 +7,24 @@ import wiretap.util.Activity
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatus
 import wiretap.util.ActivityStatusLevel
+import wiretap.util.Configuration
 import wiretap.util.MessagePart
 import wiretap.util.LogEntry
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
 import wiretap.util.MessagePartOptions
-import wiretap.util.buzz.createLogEntryBy
 import wiretap.util.PropertyName
 import wiretap.util.activity
+import wiretap.util.code
 import wiretap.util.durationMs
 import wiretap.util.name
 import wiretap.util.state
+import wiretap.util.status
+import wiretap.util.wiretap
+import wiretap.util.buzz.CreateLogEntry
+import wiretap.util.buzz.activityDuration
+import wiretap.util.buzz.activityHeader
+import wiretap.util.buzz.composeMessage
 
 class CreateLogEntryTest {
     @Test
@@ -25,22 +32,24 @@ class CreateLogEntryTest {
         val exception = IllegalStateException("broken")
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
         val status = EntryActivity.Fail(exception)
-        val factory = createLogEntryBy {
-            arrangeMessageParts {
-                parts.push(
+        val factory = CreateLogEntry(PropertyName().wiretap, composeMessage {
+            include {
+                push(
                     PropertyName("record"),
-                    properties[root.activity.state.append("recordId").toString()],
+                    this[root.activity.state.append("recordId")],
                     MessagePartOptions(
                         label = "Record",
                         separator = " ",
                     ),
                 )
-                listOfNotNull(parts.pop(PropertyName("record")))
             }
-            joinMessageParts {
+            arrange {
+                positional(PropertyName("record"))
+            }
+            join {
                 "Record ${single().value} failed"
             }
-        }
+        })
 
         scope.activity.setStatus(status)
         val entry = factory.from(listOf(scope.activity), scope.traceContext)
@@ -55,9 +64,7 @@ class CreateLogEntryTest {
     @Test
     fun allowsNamespaceConfigurationWithoutReplacingCollection() {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
-        val factory = createLogEntryBy {
-            root = PropertyName("application")
-        }
+        val factory = Configuration.Variant(root = PropertyName("application")).createLogEntry
 
         scope.activity.setStatus(EntryActivity.Fail(IllegalStateException()))
         val entry = factory.from(listOf(scope.activity), scope.traceContext)
@@ -69,18 +76,21 @@ class CreateLogEntryTest {
     @Test
     fun arrangesCollectedMessagePartsBeforeJoining() {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
-        val factory = createLogEntryBy {
-            arrangeMessageParts {
-                parts.push(PropertyName("prefix"), "Prefix")
-                listOfNotNull(
-                    parts.pop(root.activity.name),
-                    parts.pop(root.activity.durationMs),
-                ) + parts.entries.sortedBy { it.key.toString() }.map { it.value }
+        val factory = CreateLogEntry(PropertyName().wiretap, composeMessage {
+            include {
+                activityHeader()
+                activityDuration()
+                push(PropertyName("prefix"), "Prefix")
             }
-            joinMessageParts {
+            arrange {
+                positional(root.activity.name)
+                positional(root.activity.durationMs)
+                remaining()
+            }
+            join {
                 joinToString(" | ") { it.value.toString() }
             }
-        }
+        })
 
         scope.activity.setStatus(EntryActivity.Fail(IllegalStateException("broken")))
         val entry = factory.from(listOf(scope.activity), scope.traceContext)
@@ -94,7 +104,7 @@ class CreateLogEntryTest {
     @Test
     fun formatsAnnotatedMessagePartValues() {
         val scope = SnapScope(logger, FormattedActivity(12.345), parent = null)
-        val factory = createLogEntryBy()
+        val factory = Configuration.Variant().createLogEntry
 
         scope.activity.setStatus(FormattedActivity.Okay())
         val entry = factory.from(listOf(scope.activity), scope.traceContext)
@@ -108,11 +118,21 @@ class CreateLogEntryTest {
     @Test
     fun registeredMessagePartsCanReplaceDefaultsByName() {
         val scope = SnapScope(logger, EntryActivity("customer-001"), parent = null)
-        val factory = createLogEntryBy {
-            registerMessageParts {
-                parts.push(root.activity.name, "Custom")
+        val factory = CreateLogEntry(PropertyName().wiretap, composeMessage {
+            include {
+                activityHeader()
+                activityDuration()
+                push(root.activity.name, "Custom")
             }
-        }
+            arrange {
+                positional(root.activity.name)
+                positional(root.activity.durationMs)
+                remaining()
+            }
+            join {
+                joinToString("; ") { it.text }
+            }
+        })
 
         scope.activity.setStatus(EntryActivity.Fail(IllegalStateException("broken")))
         val entry = factory.from(listOf(scope.activity), scope.traceContext)

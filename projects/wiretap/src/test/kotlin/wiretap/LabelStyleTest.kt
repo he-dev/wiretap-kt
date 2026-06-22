@@ -3,7 +3,7 @@ package wiretap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.PropertyName
-import wiretap.util.buzz.LabelStyle
+import wiretap.util.LabelStyle
 
 class LabelStyleTest {
     private val name = PropertyName("wiretap", "activity", "recordID")

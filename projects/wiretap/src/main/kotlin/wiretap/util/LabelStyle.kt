@@ -1,7 +1,6 @@
-package wiretap.util.buzz
+package wiretap.util
 
 import java.util.Locale
-import wiretap.util.PropertyName
 
 fun interface LabelStyle {
     fun applyTo(name: PropertyName, label: String): String

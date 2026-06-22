@@ -1,14 +1,32 @@
 package wiretap.util
 
 import wiretap.util.buzz.CreateLogEntry
-import wiretap.util.buzz.createLogEntryBy
+import wiretap.util.buzz.ComposeMessage
+import wiretap.util.buzz.activityDuration
+import wiretap.util.buzz.activityHeader
+import wiretap.util.buzz.composeMessage
 import java.util.concurrent.ConcurrentHashMap
 
 object Configuration {
     data class Variant(
-        val createLogEntry: CreateLogEntry = createLogEntryBy(),
-        val attachTraceContext: Boolean = true,
-    )
+        val root: PropertyName = PropertyName().wiretap,
+        val composeMessage: ComposeMessage = composeMessage {
+            include {
+                activityHeader()
+                activityDuration()
+            }
+            arrange {
+                positional(root.activity.name)
+                positional(root.activity.durationMs)
+                remaining()
+            }
+            join {
+                joinToString("; ") { it.text }
+            }
+        },
+    ) {
+        internal val createLogEntry = CreateLogEntry(root, composeMessage)
+    }
 
     @Target(AnnotationTarget.CLASS)
     @Retention(AnnotationRetention.RUNTIME)

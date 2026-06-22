@@ -1,10 +1,13 @@
 package wiretap.util.buzz
 
+import wiretap.util.MessagePartMap
 import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 import wiretap.util.activity
+import wiretap.util.code
 import wiretap.util.durationMs
 import wiretap.util.name
+import wiretap.util.status
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
@@ -15,18 +18,11 @@ annotation class ComposeMessageDslMarker
 class ComposeMessageDsl internal constructor() {
     private val registrations = mutableListOf<MessagePartsDsl.() -> Unit>()
 
-    private var arrange: ArrangePartsDsl.() -> Unit = {
-        positional(root.activity.name)
-        positional(root.activity.durationMs)
-        remaining()
-    }
+    private var arrange: (ArrangePartsDsl.() -> Unit)? = null
 
-    private var join: JoinMessageDsl.() -> String = {
-        joinToString("; ") { it.text }
-    }
+    private var join: (JoinMessageDsl.() -> String)? = null
 
-    // TODO: Revisit this registration vocabulary and its replacement semantics before integration.
-    fun messageParts(contribute: MessagePartsDsl.() -> Unit) {
+    fun include(contribute: MessagePartsDsl.() -> Unit) {
         registrations += contribute
     }
 
@@ -40,8 +36,8 @@ class ComposeMessageDsl internal constructor() {
 
     internal fun build(): ComposeMessage = ComposeMessage(
         registrations = registrations.toList(),
-        arrange = arrange,
-        join = join,
+        arrange = checkNotNull(arrange) { "Message arrangement is not configured." },
+        join = checkNotNull(join) { "Message joining is not configured." },
     )
 }
 
@@ -61,6 +57,23 @@ class MessagePartsDsl internal constructor(
     ) {
         add(name, value, options)
     }
+}
+
+fun MessagePartsDsl.activityHeader() {
+    val activity = root.activity
+    push(
+        activity.name,
+        "${this[activity.name]}[${this[activity.status.code]}]",
+    )
+}
+
+fun MessagePartsDsl.activityDuration() {
+    val duration = root.activity.durationMs
+    push(
+        duration,
+        this[duration]?.let { "$it ms" } ?: "N/A",
+        MessagePartOptions(label = "Duration"),
+    )
 }
 
 @ComposeMessageDslMarker
@@ -94,7 +107,7 @@ class JoinMessageDsl internal constructor(
     entries: List<MessagePartMap.Entry>,
 ) : List<MessagePartMap.Entry> by entries
 
-fun composeMessageBy(
+fun composeMessage(
     configure: ComposeMessageDsl.() -> Unit = {},
 ): ComposeMessage =
     ComposeMessageDsl().apply(configure).build()
