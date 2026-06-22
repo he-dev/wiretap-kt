@@ -1,16 +1,23 @@
 package wiretap.util
 
-abstract class Activity {
+abstract class Activity protected constructor(
+    @StateItem
+    val role: String,
+) {
     open val name: String
         get() = this::class.simpleName!!
 
     open val tags: Set<String> = emptySet()
 
-    abstract class Buzz : Activity()
+    abstract class Buzz internal constructor(role: String) : Activity(role) {
+        protected constructor() : this("buzz")
+    }
 
-    abstract class Snap : Activity()
+    abstract class Item : Buzz("item")
 
-    abstract class Bulk<I : Buzz> : Buzz() {
+    abstract class Snap : Activity("snap")
+
+    abstract class Bulk<I : Item> : Buzz("bulk") {
         // core: Bulk calculations live with their activity, so publication needs no scope-specific path.
         internal val math = BulkMath()
 

@@ -121,7 +121,7 @@ class DeleteFiles : Activity.Bulk<DeleteFile>() {
 }
 
 @BulkItem(OmitStatus.First)
-class DeleteFile(private val path: String) : Activity.Buzz() {
+class DeleteFile(private val path: String) : Activity.Item() {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)

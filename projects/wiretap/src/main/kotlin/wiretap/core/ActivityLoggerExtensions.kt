@@ -37,27 +37,27 @@ fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
 ): R =
     beginBuzz(activity, parent, traceId).use(block)
 
-fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
+fun <B : Activity.Bulk<I>, I : Activity.Item> ActivityLogger.beginBulk(
     activity: B,
     traceId: String? = null,
 ): BulkScope<B, I> =
     beginBulk(activity, ActivityScope.current(), traceId)
 
-fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
+fun <B : Activity.Bulk<I>, I : Activity.Item, R> ActivityLogger.beginBulk(
     activity: B,
     traceId: String? = null,
     block: (BulkScope<B, I>) -> R,
 ): R =
     beginBulk(activity, traceId).use(block)
 
-fun <B : Activity.Bulk<I>, I : Activity.Buzz> ActivityLogger.beginBulk(
+fun <B : Activity.Bulk<I>, I : Activity.Item> ActivityLogger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
     traceId: String? = null,
 ): BulkScope<B, I> =
     BulkScope.push(this, activity, parent, traceId)
 
-fun <B : Activity.Bulk<I>, I : Activity.Buzz, R> ActivityLogger.beginBulk(
+fun <B : Activity.Bulk<I>, I : Activity.Item, R> ActivityLogger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
     traceId: String? = null,

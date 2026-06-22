@@ -95,7 +95,6 @@ fun getLogProperties(
         }
 
         // core: Canonical framework properties claim their keys before customizable sources.
-        current.localOnly(root.activity.role, scope.role)
         current.localOnly(root.activity.depth, scope.depth)
         current.localOnly(root.activity.path, scope.path)
         current.localOnly(root.activity.name, scope.activity.name)

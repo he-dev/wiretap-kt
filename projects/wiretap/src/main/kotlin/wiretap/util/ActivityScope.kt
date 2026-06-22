@@ -24,8 +24,6 @@ abstract class ActivityScope<A : Activity>(
     val path: String
         get() = reversed().joinToString("/") { it.activity.name }
 
-    abstract val role: String
-
     open val durationMs: Long? = null
 
     protected open fun push(): ActivityScope<A> {
@@ -64,8 +62,6 @@ open class BuzzScope<A : Activity.Buzz>(
 ) : ActivityScope<A>(logger, activity, parent, traceId) {
     private val startedAt = TimeSource.Monotonic.markNow()
     private var lastStatus: StatusSnapshot<A>? = null
-
-    override val role: String = "buzz"
 
     override val durationMs: Long
         get() = startedAt.elapsedNow().inWholeMilliseconds
@@ -120,14 +116,12 @@ internal data class StatusSnapshot<A : Activity.Buzz>(
     val durationMs: Long,
 )
 
-class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
+class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
     logger: ActivityLogger,
     activity: B,
     parent: ActivityScope<*>?,
     traceId: String? = null,
 ) : BuzzScope<B>(logger, activity, parent, traceId = traceId) {
-    override val role: String = "bulk"
-
     override fun push(): BulkScope<B, I> {
         super.push()
         return this
@@ -148,7 +142,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
         beginItem(activity, omitStatuses).use(block)
 
     companion object {
-        fun <B : Activity.Bulk<I>, I : Activity.Buzz> push(
+        fun <B : Activity.Bulk<I>, I : Activity.Item> push(
             logger: ActivityLogger,
             activity: B,
             parent: ActivityScope<*>? = ActivityScope.current(),
@@ -158,7 +152,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Buzz>(
     }
 }
 
-class ItemScope<I : Activity.Buzz>(
+class ItemScope<I : Activity.Item>(
     logger: ActivityLogger,
     activity: I,
     parent: ActivityScope<*>?,
@@ -170,8 +164,6 @@ class ItemScope<I : Activity.Buzz>(
     parent = parent,
     onLastStatus = { status, durationMs -> math.count(status.code, durationMs) },
 ) {
-    override val role: String = "item"
-
     override fun push(): ItemScope<I> {
         super.push()
         return this
@@ -181,7 +173,7 @@ class ItemScope<I : Activity.Buzz>(
         status in omitStatuses
 
     companion object {
-        fun <I : Activity.Buzz> push(
+        fun <I : Activity.Item> push(
             logger: ActivityLogger,
             activity: I,
             parent: ActivityScope<*>?,
@@ -197,8 +189,6 @@ class SnapScope<A : Activity.Snap>(
     activity: A,
     parent: ActivityScope<*>?,
 ) : ActivityScope<A>(logger, activity, parent) {
-    override val role: String = "snap"
-
     override fun push(): SnapScope<A> {
         super.push()
         return this

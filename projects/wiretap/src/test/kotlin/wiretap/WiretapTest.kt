@@ -78,6 +78,7 @@ class WiretapTest {
 
         assertEquals(listOf("Ready", "Okay"), entries.map { it["wiretap.activity.status.code"] })
         assertEquals(listOf("ImportDocument", "ImportDocument"), entries.map { it["wiretap.activity.name"] })
+        assertEquals(listOf("buzz", "buzz"), entries.map { it["wiretap.activity.state.role"] })
     }
 
     @Test
@@ -127,6 +128,7 @@ class WiretapTest {
         val initial = entries.first()
         assertEquals(listOf("DeleteFiles", "DeleteFiles"), entries.map { it["wiretap.activity.name"] })
         assertEquals("DeleteFiles", final["wiretap.activity.name"])
+        assertEquals("bulk", final["wiretap.activity.state.role"])
         assertEquals("external-trace", final["wiretap.trace_id"])
         assertEquals(0, initial["wiretap.activity.state.bulk.item_count"])
         assertEquals(0.0, initial["wiretap.activity.state.bulk.duration_s"])
@@ -155,6 +157,12 @@ class WiretapTest {
             .filter { it["wiretap.activity.name"] == "IndexReportFile" }
             .map { it["wiretap.activity.status.code"] }
         assertEquals(listOf("Okay"), itemStatuses)
+        assertEquals(
+            listOf("item"),
+            entries
+                .filter { it["wiretap.activity.name"] == "IndexReportFile" }
+                .map { it["wiretap.activity.state.role"] },
+        )
     }
 
     @Test
@@ -273,7 +281,7 @@ class WiretapTest {
     }
 
     @CountOnlyBulkItem
-    class DeleteFile : Activity.Buzz() {
+    class DeleteFile : Activity.Item() {
         class Okay : ActivityStatus.Okay<DeleteFile>()
 
         class Fail : ActivityStatus.Fail<DeleteFile>()
@@ -284,7 +292,7 @@ class WiretapTest {
     }
 
     @BulkItem(OmitStatus.First)
-    class IndexReportFile : Activity.Buzz() {
+    class IndexReportFile : Activity.Item() {
         class Okay : ActivityStatus.Okay<IndexReportFile>()
     }
 
