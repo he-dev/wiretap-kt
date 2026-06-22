@@ -1,10 +1,10 @@
 package wiretap.util.buzz
 
+import wiretap.util.Activity
 import wiretap.util.LogEntry
-import wiretap.util.ActivityScope
-import wiretap.util.ActivityStatus
 import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
+import wiretap.util.TraceContext
 import wiretap.util.activity
 import wiretap.util.code
 import wiretap.util.durationMs
@@ -19,19 +19,19 @@ class CreateLogEntry private constructor(
     private val joinMessageParts: List<MessagePartMap.Entry>.() -> String,
 ) {
     fun from(
-        scope: ActivityScope<*>,
-        status: ActivityStatus<*>,
-        vararg propertySources: Any?,
+        activities: List<Activity>,
+        traceContext: TraceContext?,
     ): LogEntry {
+        val activity = activities.first()
+        val status = activity.status
         val logProperties = getLogProperties(
             root,
-            scope,
-            status,
-            *propertySources,
+            activities,
+            traceContext,
         )
         val activityRoot = root.activity
         val get = GetLogProperty { logProperties[it] }
-        val messageParts = getMessageParts(activityRoot, get, scope.activity, status)
+        val messageParts = getMessageParts(activityRoot, get, activity, status)
         val messageContext = MessageContext(root, logProperties, messageParts)
         messagePartRegistrations.forEach { registration ->
             messageContext.registration()

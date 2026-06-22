@@ -18,7 +18,7 @@ fun <A : Activity.Buzz> ActivityLogger.beginBuzz(
 fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
     activity: A,
     traceId: String? = null,
-    block: BuzzScope<A>.() -> R,
+    block: (BuzzScope<A>) -> R,
 ): R =
     beginBuzz(activity, traceId).use(block)
 
@@ -33,7 +33,7 @@ fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
     traceId: String? = null,
-    block: BuzzScope<A>.() -> R,
+    block: (BuzzScope<A>) -> R,
 ): R =
     beginBuzz(activity, parent, traceId).use(block)
 

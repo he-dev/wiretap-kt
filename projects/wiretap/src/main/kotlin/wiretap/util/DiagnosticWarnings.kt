@@ -1,5 +1,6 @@
 package wiretap.util
 
+import java.util.Locale
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
@@ -38,6 +39,21 @@ internal fun ActivityLogger.warnAboutDuplicateLogProperty(
         LogEntry(
             level = ActivityStatusLevel.Warning,
             message = "Log-property source '${sourceType.qualifiedName}' pushed '$property' more than once; the first value was kept.",
+            properties = emptyMap(),
+        ),
+    )
+}
+
+internal fun ActivityLogger.warnAboutLastStatusOverwrite(
+    activity: Activity,
+    ignoredStatus: ActivityStatus<*>,
+) {
+    log(
+        LogEntry(
+            level = ActivityStatusLevel.Warning,
+            message = "${activity.name} status was already set to " +
+                "[${activity.status.code.lowercase(Locale.ROOT)}]; ignored later status " +
+                "[${ignoredStatus.code.lowercase(Locale.ROOT)}].",
             properties = emptyMap(),
         ),
     )

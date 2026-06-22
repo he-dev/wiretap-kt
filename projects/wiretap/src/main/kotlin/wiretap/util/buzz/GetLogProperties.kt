@@ -1,12 +1,11 @@
 package wiretap.util.buzz
 
-import wiretap.util.ActivityScope
-import wiretap.util.ActivityStatus
+import wiretap.util.Activity
 import wiretap.util.ActivityStatusRole
 import wiretap.util.Configuration
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
-import wiretap.util.StatusSnapshot
+import wiretap.util.TraceContext
 import wiretap.util.activity
 import wiretap.util.code
 import wiretap.util.depth
@@ -25,11 +24,12 @@ import wiretap.util.warnAboutDuplicateLogProperty
 
 fun getLogProperties(
     root: PropertyName,
-    scope: ActivityScope<*>,
-    status: ActivityStatus<*>,
-    vararg propertySources: Any?,
+    activities: List<Activity>,
+    traceContext: TraceContext?,
 ): Map<String, Any?> =
     buildMap {
+        val activity = activities.first()
+        val status = activity.status
         // core: A null value claims its key without entering the result map.
         val nullValueKeys = mutableSetOf<String>()
 
@@ -95,35 +95,31 @@ fun getLogProperties(
         }
 
         // core: Canonical framework properties claim their keys before customizable sources.
-        current.localOnly(root.activity.depth, scope.depth)
-        current.localOnly(root.activity.path, scope.path)
-        current.localOnly(root.activity.name, scope.activity.name)
-        current.localOnly(root.activity.tags, scope.activity.tags.takeIf { it.isNotEmpty() })
+        current.localOnly(root.activity.role, activity.role)
+        current.localOnly(root.activity.depth, activities.lastIndex)
+        current.localOnly(root.activity.path, activities.asReversed().joinToString("/") { it.name })
+        current.localOnly(root.activity.name, activity.name)
+        current.localOnly(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
         current.localOnly(root.activity.status.code, status.code)
         current.localOnly(root.activity.status.role, (status as? ActivityStatusRole)?.role)
 
-        // core: A buzz logs the duration frozen when its status was set, not its later elapsed time.
-        val snapshot = propertySources.filterIsInstance<StatusSnapshot<*>>().lastOrNull()
-        current.localOnly(root.activity.durationMs, snapshot?.durationMs)
+        // TODO: Publish activity-owned duration through annotations after framework properties leave this collector.
+        current.localOnly(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
 
-        // core: Trace properties are canonical only when enabled by the resolved configuration.
-        if (Configuration.resolve(scope.activity).attachTraceContext) {
-            val trace = scope.traceContext
-            current.localOnly(root.traceId, trace.traceId)
-            current.localOnly(root.spanId, trace.spanId)
-            current.localOnly(root.parentSpanId, trace.parentSpanId)
+        // core: A null trace context means the resolved configuration omitted trace publication.
+        if (traceContext != null) {
+            current.localOnly(root.traceId, traceContext.traceId)
+            current.localOnly(root.spanId, traceContext.spanId)
+            current.localOnly(root.parentSpanId, traceContext.parentSpanId)
         }
 
         // core: Status values are more specific than activity values.
         collect(status, current, true)
 
         // core: Natural scope iteration runs from the current activity toward the root.
-        scope.withIndex().forEach { (index, item) ->
+        activities.withIndex().forEach { (index, item) ->
             val add = if (index == 0) current else inherited
-            collect(item.activity, add, isCurrent = index == 0)
-
-            // core: Explicit sources sit below the current activity but above every ancestor.
-            if (index == 0) propertySources.forEach { collect(it, current, true) }
+            collect(item, add, isCurrent = index == 0)
         }
     }
 

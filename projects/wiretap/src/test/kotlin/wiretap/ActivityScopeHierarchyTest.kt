@@ -18,19 +18,6 @@ class ActivityScopeHierarchyTest {
             listOf("Current", "Middle", "Root"),
             current.map { it.activity.name },
         )
-        assertEquals(
-            listOf("Middle", "Root"),
-            current.ancestors.map { it.activity.name }.toList(),
-        )
-    }
-
-    @Test
-    fun buildsPathFromRootToCurrentScope() {
-        val root = BuzzScope(logger, Root(), parent = null)
-        val middle = BuzzScope(logger, Middle(), parent = root)
-        val current = BuzzScope(logger, Current(), parent = middle)
-
-        assertEquals("Root/Middle/Current", current.path)
     }
 
     private class Root : Activity.Buzz()

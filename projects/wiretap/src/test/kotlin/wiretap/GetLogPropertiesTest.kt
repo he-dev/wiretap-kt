@@ -10,7 +10,6 @@ import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
 import wiretap.util.LogEntry
 import wiretap.util.PropertyName
-import wiretap.util.SnapScope
 import wiretap.util.StateItem
 import wiretap.util.activity
 import wiretap.util.state
@@ -21,11 +20,12 @@ import wiretap.util.buzz.getLogProperties
 class GetLogPropertiesTest {
     @Test
     fun getsPropertiesFromInterfacesAndAnnotations() {
+        val activity = PropertyActivity(local = "local", cascading = "shared")
+        activity.setStatus(PropertyActivity.Okay())
         val properties = getLogProperties(
             PropertyName("wiretap"),
-            SnapScope(logger, PropertyActivity(), parent = null),
-            PropertyActivity.Okay(),
-            Source(local = "local", cascading = "shared"),
+            listOf(activity),
+            traceContext = null,
         )
 
         assertEquals("interface", properties["wiretap.source"])
@@ -35,15 +35,19 @@ class GetLogPropertiesTest {
 
     @Test
     fun nearestInterfaceClaimWinsAndCanSuppressFallbacksWithNull() {
-        val parent = SnapScope(logger, ParentActivity(), parent = null)
+        val parent = ParentActivity()
+        val activity = NullingActivity()
+        activity.setStatus(NullingActivity.Okay())
         val properties = getLogProperties(
             PropertyName("wiretap"),
-            SnapScope(logger, NullingActivity(), parent),
-            NullingActivity.Okay(),
+            listOf(activity, parent),
+            traceContext = null,
         )
 
         assertNull(properties["wiretap.activity.state.shared"])
         assertNull(properties["wiretap.activity.state.local"])
+        assertEquals(1, properties["wiretap.activity.depth"])
+        assertEquals("ParentActivity/NullingActivity", properties["wiretap.activity.path"])
     }
 
     @Test
@@ -58,10 +62,12 @@ class GetLogPropertiesTest {
 
         try {
             Configuration.logDiagnosticsWith(diagnosticLogger)
+            val activity = DuplicateActivity()
+            activity.setStatus(DuplicateActivity.Okay())
             val properties = getLogProperties(
                 PropertyName("wiretap"),
-                SnapScope(logger, DuplicateActivity(), parent = null),
-                DuplicateActivity.Okay(),
+                listOf(activity),
+                traceContext = null,
             )
 
             assertEquals("first", properties["wiretap.activity.state.duplicate"])
@@ -88,11 +94,12 @@ class GetLogPropertiesTest {
 
         try {
             Configuration.logDiagnosticsWith(logger)
+            val activity = PrivateSource("hidden")
+            activity.setStatus(PrivateSource.Okay())
             val properties = getLogProperties(
                 PropertyName("wiretap"),
-                SnapScope(logger, PropertyActivity(), parent = null),
-                PropertyActivity.Okay(),
-                PrivateSource("hidden"),
+                listOf(activity),
+                traceContext = null,
             )
             assertNull(properties["wiretap.activity.state.hidden"])
         } finally {
@@ -107,25 +114,25 @@ class GetLogPropertiesTest {
         )
     }
 
-    class Source(
+    class PropertyActivity(
         @StateItem
         val local: String,
 
         @StateItem(cascade = true)
         val cascading: String,
-    ) : LogPropertySource {
+    ) : Activity.Snap(), LogPropertySource {
         override fun AddLogProperty.logProperties(root: PropertyName) {
             localOnly(root.append("source"), "interface")
         }
+
+        class Okay : ActivityStatus.Okay<PropertyActivity>()
     }
 
     class PrivateSource(
         @StateItem
         private val hidden: String,
-    )
-
-    class PropertyActivity : Activity.Snap() {
-        class Okay : ActivityStatus.Okay<PropertyActivity>()
+    ) : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<PrivateSource>()
     }
 
     class ParentActivity(

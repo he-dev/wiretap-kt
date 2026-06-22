@@ -1,19 +1,50 @@
 package wiretap.util
 
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
+
 abstract class Activity protected constructor(
-    @StateItem
     val role: String,
 ) {
+    internal lateinit var status: ActivityStatus<*>
+        private set
+
     open val name: String
         get() = this::class.simpleName!!
 
     open val tags: Set<String> = emptySet()
 
-    abstract class Buzz internal constructor(role: String) : Activity(role) {
-        protected constructor() : this("buzz")
+    internal open fun setStatus(status: ActivityStatus<*>): Boolean {
+        if (::status.isInitialized && this.status is Last) return false
+
+        this.status = status
+        return true
     }
 
-    abstract class Item : Buzz("item")
+    abstract class Buzz internal constructor(role: String) : Activity(role) {
+        private lateinit var startedAt: TimeMark
+
+        var durationMs: Long = 0
+            private set
+
+        protected constructor() : this("buzz")
+
+        internal fun start() {
+            startedAt = TimeSource.Monotonic.markNow()
+        }
+
+        internal override fun setStatus(status: ActivityStatus<*>): Boolean {
+            if (!super.setStatus(status)) return false
+
+            durationMs = startedAt.elapsedNow().inWholeMilliseconds
+            return true
+        }
+    }
+
+    abstract class Item : Buzz("item") {
+        internal open val resolvedOmitStatuses: Set<OmitStatus>
+            get() = bulkItemStatusOmissions(javaClass)
+    }
 
     abstract class Snap : Activity("snap")
 

@@ -23,8 +23,14 @@ class TraceContextTest {
         val child = SnapScope(logger, ChildActivity(), parent)
         val createLogEntry = createLogEntryBy()
 
-        val parentEntry = createLogEntry.from(parent, ParentActivity.Okay())
-        val childEntry = createLogEntry.from(child, ChildActivity.Okay())
+        parent.activity.start()
+        parent.activity.setStatus(ParentActivity.Okay())
+        child.activity.setStatus(ChildActivity.Okay())
+        val parentEntry = createLogEntry.from(listOf(parent.activity), parent.traceContext)
+        val childEntry = createLogEntry.from(
+            listOf(child.activity, parent.activity),
+            child.traceContext,
+        )
 
         assertTrue(parent.traceContext.traceId.matches(Regex("[0-9a-f]{32}")))
         assertTrue(parent.traceContext.spanId.matches(Regex("[0-9a-f]{16}")))
@@ -43,9 +49,9 @@ class TraceContextTest {
     fun acceptsExternalTraceIdWhenBeginningRootBuzz() {
         val externalTraceId = "0123456789abcdef0123456789abcdef"
 
-        logger.beginBuzz(ParentActivity(), traceId = externalTraceId) {
-            assertEquals(externalTraceId, traceContext.traceId)
-            setStatus(ParentActivity.Okay())
+        logger.beginBuzz(ParentActivity(), traceId = externalTraceId) { buzz ->
+            assertEquals(externalTraceId, buzz.traceContext.traceId)
+            buzz.setStatus(ParentActivity.Okay())
         }
     }
 
@@ -56,7 +62,8 @@ class TraceContextTest {
         }
         val scope = SnapScope(logger, UntracedActivity(), parent = null)
 
-        val entry = createLogEntryBy().from(scope, UntracedActivity.Okay())
+        scope.activity.setStatus(UntracedActivity.Okay())
+        val entry = createLogEntryBy().from(listOf(scope.activity), traceContext = null)
 
         assertFalse(entry.properties.keys.any { it.startsWith("wiretap.trace_") })
         assertFalse(entry.properties.containsKey("wiretap.span_id"))

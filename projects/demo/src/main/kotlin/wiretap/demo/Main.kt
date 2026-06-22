@@ -53,12 +53,12 @@ fun main() {
 
     logger.info("{} demo", Wiretap.name)
 
-    logger.beginBuzz(ImportDocument("customers.csv")) {
-        logger.beginBuzz(ParseDocument("csv")) {
-            setStatus(ParseDocument.Okay(recordsParsed = 3))
+    logger.beginBuzz(ImportDocument("customers.csv")) { import ->
+        logger.beginBuzz(ParseDocument("csv")) { parse ->
+            parse.setStatus(ParseDocument.Okay(recordsParsed = 3))
         }
 
-        setStatus(ImportDocument.Okay(recordsSaved = 2))
+        import.setStatus(ImportDocument.Okay(recordsSaved = 2))
         logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
     }
 

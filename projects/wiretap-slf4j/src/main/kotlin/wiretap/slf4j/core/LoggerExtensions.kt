@@ -20,7 +20,7 @@ fun <A : Activity.Buzz> Logger.beginBuzz(
 fun <A : Activity.Buzz, R> Logger.beginBuzz(
     activity: A,
     traceId: String? = null,
-    block: BuzzScope<A>.() -> R,
+    block: (BuzzScope<A>) -> R,
 ): R =
     LoggerAdapter(this).beginBuzz(activity, traceId, block)
 
@@ -35,7 +35,7 @@ fun <A : Activity.Buzz, R> Logger.beginBuzz(
     activity: A,
     parent: ActivityScope<*>?,
     traceId: String? = null,
-    block: BuzzScope<A>.() -> R,
+    block: (BuzzScope<A>) -> R,
 ): R =
     LoggerAdapter(this).beginBuzz(activity, parent, traceId, block)
 

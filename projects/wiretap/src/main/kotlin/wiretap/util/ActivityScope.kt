@@ -1,8 +1,6 @@
 package wiretap.util
 
 import wiretap.meta.ActivityScopeAmbient
-import wiretap.util.buzz.*
-import kotlin.time.TimeSource
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
@@ -15,17 +13,6 @@ abstract class ActivityScope<A : Activity>(
 
     val traceContext: TraceContext = TraceContext.create(parent?.traceContext, traceId)
 
-    val depth: Int
-        get() = parent?.depth?.plus(1) ?: 0
-
-    val ancestors: Sequence<ActivityScope<*>>
-        get() = asSequence().drop(1)
-
-    val path: String
-        get() = reversed().joinToString("/") { it.activity.name }
-
-    open val durationMs: Long? = null
-
     protected open fun push(): ActivityScope<A> {
         // meta: Ambient scope is restored by close, which is why callers must use the returned scope with use.
         ambient = ActivityScopeAmbient.push(this)
@@ -34,8 +21,13 @@ abstract class ActivityScope<A : Activity>(
 
     abstract fun setStatus(status: ActivityStatus<A>);
 
-    protected fun log(status: ActivityStatus<A>, vararg propertySources: Any?) {
-        logger.log(variant.createLogEntry.from(this, status, *propertySources))
+    protected fun log() {
+        logger.log(
+            variant.createLogEntry.from(
+                activities = map { it.activity },
+                traceContext = traceContext.takeIf { variant.attachTraceContext },
+            ),
+        )
     }
 
     override fun close() {
@@ -57,23 +49,21 @@ open class BuzzScope<A : Activity.Buzz>(
     logger: ActivityLogger,
     activity: A,
     parent: ActivityScope<*>?,
-    private val onLastStatus: ((ActivityStatus<A>, Long) -> Unit)? = null,
+    private val onLastStatus: ((String, Long) -> Unit)? = null,
     traceId: String? = null,
 ) : ActivityScope<A>(logger, activity, parent, traceId) {
-    private val startedAt = TimeSource.Monotonic.markNow()
-    private var lastStatus: StatusSnapshot<A>? = null
-
-    override val durationMs: Long
-        get() = startedAt.elapsedNow().inWholeMilliseconds
-
     override fun setStatus(status: ActivityStatus<A>) {
-        lastStatus = StatusSnapshot(status, durationMs)
+        if (!activity.setStatus(status)) {
+            Configuration.diagnosticLogger.warnAboutLastStatusOverwrite(activity, status)
+        }
     }
 
     override fun push(): BuzzScope<A> {
+        activity.start()
         super.push()
+        activity.setStatus(ActivityStatus.Ready<A>())
         if (!omits(OmitStatus.First)) {
-            log(StatusSnapshot(ActivityStatus.Ready(), durationMs))
+            log()
         }
 
         return this
@@ -81,24 +71,20 @@ open class BuzzScope<A : Activity.Buzz>(
 
     override fun close() {
         // core: A buzz without an explicit final status is still logged, so open scopes cannot disappear silently.
-        val snapshot = lastStatus ?: StatusSnapshot(ActivityStatus.Void<A>(), durationMs).also {
-            lastStatus = it
+        if (activity.status !is Last) {
+            activity.setStatus(ActivityStatus.Void<A>())
         }
 
         if (!omits(OmitStatus.Last)) {
-            log(snapshot)
+            log()
         }
 
-        onLastStatus?.invoke(snapshot.status, snapshot.durationMs)
+        onLastStatus?.invoke(activity.status.code, activity.durationMs)
         super.close()
     }
 
     protected open fun omits(status: OmitStatus): Boolean =
         false
-
-    private fun log(snapshot: StatusSnapshot<A>) {
-        log(snapshot.status, snapshot)
-    }
 
     companion object {
         fun <A : Activity.Buzz> push(
@@ -111,11 +97,6 @@ open class BuzzScope<A : Activity.Buzz>(
     }
 }
 
-internal data class StatusSnapshot<A : Activity.Buzz>(
-    val status: ActivityStatus<A>,
-    val durationMs: Long,
-)
-
 class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
     logger: ActivityLogger,
     activity: B,
@@ -127,19 +108,15 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
         return this
     }
 
-    fun beginItem(
-        activity: I,
-        omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
-    ): ItemScope<I> =
+    fun beginItem(activity: I): ItemScope<I> =
         // core: Items report their final status into the parent bulk math instead of owning a separate summary.
-        ItemScope.push(logger, activity, parent = this, this.activity.math, omitStatuses)
+        ItemScope.push(logger, activity, parent = this, this.activity.math)
 
     fun <R> beginItem(
         activity: I,
-        omitStatuses: Set<OmitStatus> = bulkItemStatusOmissions(activity.javaClass),
         block: (ItemScope<I>) -> R,
     ): R =
-        beginItem(activity, omitStatuses).use(block)
+        beginItem(activity).use(block)
 
     companion object {
         fun <B : Activity.Bulk<I>, I : Activity.Item> push(
@@ -157,12 +134,11 @@ class ItemScope<I : Activity.Item>(
     activity: I,
     parent: ActivityScope<*>?,
     private val math: BulkMath,
-    private val omitStatuses: Set<OmitStatus>,
 ) : BuzzScope<I>(
     logger = logger,
     activity = activity,
     parent = parent,
-    onLastStatus = { status, durationMs -> math.count(status.code, durationMs) },
+    onLastStatus = math::count,
 ) {
     override fun push(): ItemScope<I> {
         super.push()
@@ -170,7 +146,7 @@ class ItemScope<I : Activity.Item>(
     }
 
     override fun omits(status: OmitStatus): Boolean =
-        status in omitStatuses
+        status in activity.resolvedOmitStatuses
 
     companion object {
         fun <I : Activity.Item> push(
@@ -178,9 +154,8 @@ class ItemScope<I : Activity.Item>(
             activity: I,
             parent: ActivityScope<*>?,
             math: BulkMath,
-            omitStatuses: Set<OmitStatus>,
         ): ItemScope<I> =
-            ItemScope(logger, activity, parent, math, omitStatuses).push()
+            ItemScope(logger, activity, parent, math).push()
     }
 }
 
@@ -195,7 +170,11 @@ class SnapScope<A : Activity.Snap>(
     }
 
     override fun setStatus(status: ActivityStatus<A>) {
-        log(status)
+        if (activity.setStatus(status)) {
+            log()
+        } else {
+            Configuration.diagnosticLogger.warnAboutLastStatusOverwrite(activity, status)
+        }
     }
 
     companion object {

@@ -11,12 +11,16 @@ import wiretap.util.ActivityStatus
 import wiretap.util.BulkItem
 import wiretap.util.BuzzScope
 import wiretap.util.CountOnlyBulkItem
+import wiretap.util.Configuration
 import wiretap.util.OmitStatus
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
 import wiretap.util.LogEntry
 import wiretap.util.MessagePart
 import wiretap.util.PropertyName
+import wiretap.util.QuickBulk
+import wiretap.util.QuickItem
+import wiretap.util.QuickSnap
 import wiretap.util.StateItem
 import wiretap.util.activity
 import wiretap.util.state
@@ -35,17 +39,17 @@ class WiretapTest {
 
     @Test
     fun ambientScopeBuildsNestedPath() {
-        logger.beginBuzz(ImportDocument()) {
-            val import = this
-
-            logger.beginBuzz(ParseDocument()) {
-                assertEquals(import, parent)
-                assertEquals(1, depth)
-                assertEquals("ImportDocument/ParseDocument", path)
-                setStatus(ParseDocument.Okay())
+        logger.beginBuzz(ImportDocument()) { import ->
+            logger.beginBuzz(ParseDocument()) { parse ->
+                assertEquals(import, parse.parent)
+                assertEquals(
+                    listOf("ParseDocument", "ImportDocument"),
+                    parse.map { it.activity.name },
+                )
+                parse.setStatus(ParseDocument.Okay())
             }
 
-            setStatus(ImportDocument.Okay())
+            import.setStatus(ImportDocument.Okay())
         }
 
         assertNull(ActivityScope.current())
@@ -58,9 +62,12 @@ class WiretapTest {
         try {
             parent.close()
 
-            logger.beginBuzz(ParseDocument(), parent = parent) {
-                assertEquals(parent, this.parent)
-                assertEquals("ImportDocument/ParseDocument", path)
+            logger.beginBuzz(ParseDocument(), parent = parent) { parse ->
+                assertEquals(parent, parse.parent)
+                assertEquals(
+                    listOf("ParseDocument", "ImportDocument"),
+                    parse.map { it.activity.name },
+                )
             }
         } finally {
             parent.close()
@@ -72,34 +79,59 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBuzz(ImportDocument()) {
-            setStatus(ImportDocument.Okay())
+        logger.beginBuzz(ImportDocument()) { buzz ->
+            buzz.setStatus(ImportDocument.Okay())
         }
 
         assertEquals(listOf("Ready", "Okay"), entries.map { it["wiretap.activity.status.code"] })
         assertEquals(listOf("ImportDocument", "ImportDocument"), entries.map { it["wiretap.activity.name"] })
-        assertEquals(listOf("buzz", "buzz"), entries.map { it["wiretap.activity.state.role"] })
+        assertEquals(listOf("buzz", "buzz"), entries.map { it["wiretap.activity.role"] })
     }
 
     @Test
     fun setStatusFreezesDurationForFinalLog() {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
-        val scope = ControlledBuzzScope(logger, ImportDocument())
+        val activity = ImportDocument()
+        val scope = BuzzScope.push(logger, activity)
 
-        scope.elapsedMs = 10
         scope.setStatus(ImportDocument.Okay())
-        scope.elapsedMs = 20
+        val frozenDuration = activity.durationMs
+        Thread.sleep(10)
         scope.close()
 
-        assertEquals(10L, entries.last()["wiretap.activity.duration_ms"])
+        assertEquals(frozenDuration, activity.durationMs)
+        assertEquals(frozenDuration, entries.last()["wiretap.activity.duration_ms"])
+    }
+
+    @Test
+    fun firstLastStatusWinsAndLaterStatusEmitsDiagnostic() {
+        val entries = mutableListOf<LogEntry>()
+        val diagnostics = mutableListOf<LogEntry>()
+        val previous = Configuration.diagnosticLogger
+
+        try {
+            Configuration.logDiagnosticsWith(TestActivityLogger(diagnostics))
+            TestActivityLogger(entries).beginBuzz(ImportDocument()) { buzz ->
+                buzz.setStatus(ImportDocument.Okay())
+                buzz.setStatus(ImportDocument.Fail())
+            }
+        } finally {
+            Configuration.logDiagnosticsWith(previous)
+        }
+
+        assertEquals(listOf("Ready", "Okay"), entries.map { it["wiretap.activity.status.code"] })
+        assertEquals(
+            "ImportDocument status was already set to [okay]; ignored later status [fail].",
+            diagnostics.single().message,
+        )
     }
 
     @Test
     fun beginBuzzBlockClosesScopeAndReturnsValue() {
-        val result = logger.beginBuzz(ImportDocument()) {
-            assertEquals(this, ActivityScope.current())
-            setStatus(ImportDocument.Okay())
+        val result = logger.beginBuzz(ImportDocument()) { buzz ->
+            assertEquals(buzz, ActivityScope.current())
+            buzz.setStatus(ImportDocument.Okay())
             "done"
         }
 
@@ -128,7 +160,7 @@ class WiretapTest {
         val initial = entries.first()
         assertEquals(listOf("DeleteFiles", "DeleteFiles"), entries.map { it["wiretap.activity.name"] })
         assertEquals("DeleteFiles", final["wiretap.activity.name"])
-        assertEquals("bulk", final["wiretap.activity.state.role"])
+        assertEquals("bulk", final["wiretap.activity.role"])
         assertEquals("external-trace", final["wiretap.trace_id"])
         assertEquals(0, initial["wiretap.activity.state.bulk.item_count"])
         assertEquals(0.0, initial["wiretap.activity.state.bulk.duration_s"])
@@ -161,26 +193,59 @@ class WiretapTest {
             listOf("item"),
             entries
                 .filter { it["wiretap.activity.name"] == "IndexReportFile" }
-                .map { it["wiretap.activity.state.role"] },
+                .map { it["wiretap.activity.role"] },
         )
     }
 
     @Test
-    fun explicitItemOmissionsOverrideItsAnnotations() {
+    fun quickItemCanSpecifyStatusOmissions() {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBulk(DeleteFiles()) { bulk ->
-            bulk.beginItem(DeleteFile(), omitStatuses = emptySet()) { item ->
-                item.setStatus(DeleteFile.Okay())
+        logger.beginBulk(QuickBulk("QuickFiles")) { bulk ->
+            bulk.beginItem(QuickItem("QuickFile", omitStatuses = setOf(OmitStatus.First))) { item ->
+                item.setStatus(QuickItem.Okay())
             }
-            bulk.setStatus(DeleteFiles.Okay())
+            bulk.setStatus(QuickBulk.Okay())
         }
 
         val itemStatuses = entries
-            .filter { it["wiretap.activity.name"] == "DeleteFile" }
+            .filter { it["wiretap.activity.name"] == "QuickFile" }
             .map { it["wiretap.activity.status.code"] }
-        assertEquals(listOf("Ready", "Okay"), itemStatuses)
+        assertEquals(listOf("Okay"), itemStatuses)
+    }
+
+    @Test
+    fun quickActivitiesCarryRuntimeNamesAndMessages() {
+        val entries = mutableListOf<LogEntry>()
+        val logger = TestActivityLogger(entries)
+
+        logger.logSnap(
+            QuickSnap("InspectCache", "Key: users:active"),
+            QuickSnap.Okay("Entries: 42"),
+        )
+
+        val entry = entries.single()
+        assertEquals("InspectCache", entry["wiretap.activity.name"])
+        assertEquals(
+            "InspectCache[Okay]; Duration: N/A; Entries: 42",
+            entry.message,
+        )
+    }
+
+    @Test
+    fun quickActivityMessageRemainsWhenStatusHasNoMessage() {
+        val entries = mutableListOf<LogEntry>()
+
+        TestActivityLogger(entries).logSnap(
+            QuickSnap("InspectCache", "Key: users:active"),
+            QuickSnap.Okay(),
+        )
+
+        assertEquals(
+            "InspectCache[Okay]; Duration: N/A; Key: users:active",
+            entries.single().message,
+        )
     }
 
     @Test
@@ -213,13 +278,13 @@ class WiretapTest {
         val entries = mutableListOf<LogEntry>()
         val logger = TestActivityLogger(entries)
 
-        logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")) {
-            logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")) {
+        logger.beginBuzz(ImportDocumentWithState(source = "customers.csv", localOnly = "root-only")) { import ->
+            logger.beginBuzz(ParseDocumentWithState(documentType = "csv", localOnly = "parent-only")) { parse ->
                 logger.logSnap(SaveRecord(rowIndex = 1, recordId = "customer-001"), SaveRecord.Okay())
-                setStatus(ParseDocumentWithState.Okay())
+                parse.setStatus(ParseDocumentWithState.Okay())
             }
 
-            setStatus(ImportDocumentWithState.Okay())
+            import.setStatus(ImportDocumentWithState.Okay())
         }
 
         val snap = entries.first { it["wiretap.activity.name"] == "SaveRecord" }
@@ -245,6 +310,7 @@ class WiretapTest {
 
     class ImportDocument : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ImportDocument>()
+        class Fail : ActivityStatus.Fail<ImportDocument>()
     }
 
     class ImportDocumentWithState(
@@ -327,16 +393,6 @@ class WiretapTest {
         val alias: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
-    }
-
-    private class ControlledBuzzScope(
-        logger: ActivityLogger,
-        activity: ImportDocument,
-    ) : BuzzScope<ImportDocument>(logger, activity, parent = null) {
-        var elapsedMs: Long = 0
-
-        override val durationMs: Long
-            get() = elapsedMs
     }
 
     private class TestActivityLogger(

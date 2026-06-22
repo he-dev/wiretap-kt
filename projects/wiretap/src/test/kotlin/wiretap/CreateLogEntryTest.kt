@@ -42,7 +42,8 @@ class CreateLogEntryTest {
             }
         }
 
-        val entry = factory.from(scope, status)
+        scope.activity.setStatus(status)
+        val entry = factory.from(listOf(scope.activity), scope.traceContext)
 
         assertEquals(ActivityStatusLevel.Error, entry.level)
         assertEquals("Record customer-001 failed", entry.message)
@@ -58,7 +59,8 @@ class CreateLogEntryTest {
             root = PropertyName("application")
         }
 
-        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException()))
+        scope.activity.setStatus(EntryActivity.Fail(IllegalStateException()))
+        val entry = factory.from(listOf(scope.activity), scope.traceContext)
 
         assertEquals("customer-001", entry["application.activity.state.recordId"])
         assertEquals("Fail", entry["application.activity.status.code"])
@@ -80,7 +82,8 @@ class CreateLogEntryTest {
             }
         }
 
-        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException("broken")))
+        scope.activity.setStatus(EntryActivity.Fail(IllegalStateException("broken")))
+        val entry = factory.from(listOf(scope.activity), scope.traceContext)
 
         assertEquals(
             "EntryActivity[Fail] | N/A | broken | Prefix",
@@ -93,7 +96,8 @@ class CreateLogEntryTest {
         val scope = SnapScope(logger, FormattedActivity(12.345), parent = null)
         val factory = createLogEntryBy()
 
-        val entry = factory.from(scope, FormattedActivity.Okay())
+        scope.activity.setStatus(FormattedActivity.Okay())
+        val entry = factory.from(listOf(scope.activity), scope.traceContext)
 
         assertEquals(
             "FormattedActivity[Okay]; Duration: N/A; Rate: 12.35",
@@ -110,7 +114,8 @@ class CreateLogEntryTest {
             }
         }
 
-        val entry = factory.from(scope, EntryActivity.Fail(IllegalStateException("broken")))
+        scope.activity.setStatus(EntryActivity.Fail(IllegalStateException("broken")))
+        val entry = factory.from(listOf(scope.activity), scope.traceContext)
 
         assertEquals("Custom; Duration: N/A; Exception: broken", entry.message)
     }
