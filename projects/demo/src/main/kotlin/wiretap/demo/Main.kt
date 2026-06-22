@@ -126,23 +126,3 @@ class DeleteFile(private val path: String) : Activity.Buzz() {
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)
 }
-
-private interface A {
-    fun String.example()
-}
-
-private open class B : A {
-    override fun String.example() = Unit
-}
-
-private class C : B() {
-    override fun String.example() {
-        // Neither form compiles because Kotlin cannot bind super dispatch to the current extension receiver.
-        // super.example()
-        // super<B>.example()
-        // Cast the dispatch receiver to B to access its implementation
-        with(this@C as B) {
-            example() // Resolves to B's implementation of String.example()
-        }
-    }
-}

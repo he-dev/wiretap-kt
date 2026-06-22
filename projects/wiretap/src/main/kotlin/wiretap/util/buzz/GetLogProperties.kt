@@ -36,9 +36,12 @@ fun getLogProperties(
         // core: Sources are processed strongest-first, so the first claim owns a key.
         fun putFirst(key: PropertyName, value: Any?) {
             val name = key.toString()
+
+            // core: A null value claims its key without entering the result map.
             if (name in nullValueKeys) return
 
             if (value == null) {
+                // core: Record null-value key.
                 if (!containsKey(name)) nullValueKeys += name
             } else {
                 putIfAbsent(name, value)
@@ -48,21 +51,19 @@ fun getLogProperties(
         // core: The current activity may publish both local and cascading properties.
         val current = object : AddLogProperty {
             override fun localOnly(key: PropertyName, value: Any?) = putFirst(key, value)
-
             override fun cascading(key: PropertyName, value: Any?) = putFirst(key, value)
         }
 
         // core: Ancestors may contribute only properties explicitly marked as cascading.
         val inherited = object : AddLogProperty {
             override fun localOnly(key: PropertyName, value: Any?) = Unit
-
             override fun cascading(key: PropertyName, value: Any?) = putFirst(key, value)
         }
 
         // core: Interface values are collected before annotations because first claims win.
-        fun collectInterface(source: Any?, add: AddLogProperty, warnAboutDuplicates: Boolean = false) {
+        fun collectInterface(source: Any?, add: AddLogProperty, isCurrent: Boolean) {
             val propertySource = source as? LogPropertySource ?: return
-            if (!warnAboutDuplicates) {
+            if (!isCurrent) {
                 with(propertySource) { add.logProperties(root) }
                 return
             }
@@ -70,26 +71,26 @@ fun getLogProperties(
             // note: Duplicate detection is local to one current-interface invocation.
             val seenKeys = mutableSetOf<String>()
             val checked = object : AddLogProperty {
-                fun push(key: PropertyName, value: Any?, cascading: Boolean) {
+                fun push(key: PropertyName, value: Any?) {
                     if (!seenKeys.add(key.toString())) {
                         Configuration.diagnosticLogger.warnAboutDuplicateLogProperty(source::class, key)
                         return
                     }
 
-                    if (cascading) add.cascading(key, value) else add.localOnly(key, value)
+                    // core: For the current scope it does not matter whether the value is cascading or local-only.
+                    add.localOnly(key, value)
                 }
 
-                override fun localOnly(key: PropertyName, value: Any?) = push(key, value, false)
-
-                override fun cascading(key: PropertyName, value: Any?) = push(key, value, true)
+                override fun localOnly(key: PropertyName, value: Any?) = push(key, value)
+                override fun cascading(key: PropertyName, value: Any?) = push(key, value)
             }
 
             with(propertySource) { checked.logProperties(root) }
         }
 
-        fun collect(source: Any?, add: AddLogProperty, warnAboutDuplicates: Boolean = false) {
+        fun collect(source: Any?, add: AddLogProperty, isCurrent: Boolean) {
             source ?: return
-            collectInterface(source, add, warnAboutDuplicates)
+            collectInterface(source, add, isCurrent)
             addAnnotatedLogProperties(root.activity.state, source, add)
         }
 
@@ -115,15 +116,15 @@ fun getLogProperties(
         }
 
         // core: Status values are more specific than activity values.
-        collect(status, current)
+        collect(status, current, true)
 
         // core: Natural scope iteration runs from the current activity toward the root.
         scope.withIndex().forEach { (index, item) ->
             val add = if (index == 0) current else inherited
-            collect(item.activity, add, warnAboutDuplicates = index == 0)
+            collect(item.activity, add, isCurrent = index == 0)
 
             // core: Explicit sources sit below the current activity but above every ancestor.
-            if (index == 0) propertySources.forEach { collect(it, current) }
+            if (index == 0) propertySources.forEach { collect(it, current, true) }
         }
     }
 
