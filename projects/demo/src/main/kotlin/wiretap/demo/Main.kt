@@ -1,11 +1,12 @@
 package wiretap.demo
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import wiretap.util.Wiretap
+import wiretap.coroutines.core.beginBulk
+import wiretap.coroutines.core.beginBuzz
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
-import wiretap.slf4j.core.beginBuzz
-import wiretap.slf4j.core.beginBulk
 import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
 import wiretap.util.BulkItem
@@ -26,14 +27,12 @@ import wiretap.util.buzz.MessagePartSource
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
-fun main() {
+fun main() = runBlocking {
     Configuration.useDiagnosticsLogger()
 
-    logger.info("{} demo", Wiretap.name)
-
     logger.beginBuzz(ImportDocument("customers.csv")) { import ->
-        logger.beginBuzz(ParseDocument("csv")) { parse ->
-            parse.setStatus(ParseDocument.Okay(recordsParsed = 3))
+        launch {
+            parseDocument()
         }
 
         import.setStatus(ImportDocument.Okay(recordsSaved = 2))
@@ -50,6 +49,16 @@ fun main() {
         }
 
         bulk.setStatus(DeleteFiles.Okay())
+    }
+}
+
+suspend fun parseDocument() {
+    parseCsv()
+}
+
+suspend fun parseCsv() {
+    logger.beginBuzz(ParseDocument("csv")) { parse ->
+        parse.setStatus(ParseDocument.Okay(recordsParsed = 3))
     }
 }
 

@@ -27,15 +27,9 @@ import wiretap.util.state
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.LogPropertySource
 import wiretap.core.logSnap
-import wiretap.util.Wiretap
 
 class WiretapTest {
     private val logger = TestActivityLogger()
-
-    @Test
-    fun exposesName() {
-        assertEquals("wiretap", Wiretap.name)
-    }
 
     @Test
     fun ambientScopeBuildsNestedPath() {
