@@ -15,7 +15,7 @@ fun getMessageParts(
     val add = AddMessagePart(parts::push)
 
     sources.asSequence().filterNotNull().forEach { source ->
-        annotatedProperties<MessagePart>(source)
+        findAnnotatedProperties<MessagePart>(source)
             .mapNotNull { property ->
                 property.value(source)?.let { property to it }
             }

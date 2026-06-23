@@ -127,9 +127,9 @@ internal fun addAnnotatedLogProperties(
     add: AddLogProperty,
 ) {
     // core: StateItem properties are relative to the activity-state namespace.
-    annotatedProperties<StateItem>(source)
+    findAnnotatedProperties<StateItem>(source)
         .forEach { property ->
-            // meta: An omitted annotation name falls back to the Kotlin property name.
+            // core: An omitted annotation name falls back to the Kotlin property name.
             val name = property.annotation.name.nullIfUnset() ?: property.name
             val value = property.value(source)
 

@@ -13,13 +13,14 @@ import wiretap.util.warnAboutNonPublicAnnotatedProperty
 private val annotatedPropertyCache =
     ConcurrentHashMap<AnnotatedPropertyKey, List<AnnotatedProperty<out Annotation>>>()
 
-internal inline fun <reified A : Annotation> annotatedProperties(
+internal inline fun <reified A : Annotation> findAnnotatedProperties(
     source: Any,
 ): Sequence<AnnotatedProperty<A>> =
-    annotatedProperties(source::class, A::class)
+    findAnnotatedProperties(source::class, A::class)
 
+// meta: The reified overload keeps call sites clean, while this worker keeps cached reflection in one place.
 @Suppress("UNCHECKED_CAST")
-private fun <A : Annotation> annotatedProperties(
+private fun <A : Annotation> findAnnotatedProperties(
     type: KClass<*>,
     annotationType: KClass<A>,
 ): Sequence<AnnotatedProperty<A>> =
@@ -27,11 +28,12 @@ private fun <A : Annotation> annotatedProperties(
     (annotatedPropertyCache.getOrPut(AnnotatedPropertyKey(type, annotationType)) {
         type.memberProperties.mapNotNull { property ->
             val annotation = property.findAnnotation(annotationType) ?: return@mapNotNull null
-            if (property.visibility != KVisibility.PUBLIC) {
+            if (property.visibility == KVisibility.PUBLIC) {
+                AnnotatedProperty(annotation, property)
+            } else {
                 Configuration.diagnosticLogger.warnAboutNonPublicAnnotatedProperty(annotationType, type, property)
-                return@mapNotNull null
+                null
             }
-            AnnotatedProperty(annotation, property)
         }
     } as List<AnnotatedProperty<A>>).asSequence()
 
