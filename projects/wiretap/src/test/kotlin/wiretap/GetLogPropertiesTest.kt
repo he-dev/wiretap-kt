@@ -13,8 +13,8 @@ import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.activity
 import wiretap.util.state
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.LogPropertySource
+import wiretap.util.LogPropertyRegistry
+import wiretap.util.LogPropertySource
 import wiretap.util.buzz.getLogProperties
 
 class GetLogPropertiesTest {
@@ -121,8 +121,8 @@ class GetLogPropertiesTest {
         @StateItem(cascade = true)
         val cascading: String,
     ) : Activity.Snap(), LogPropertySource {
-        override fun AddLogProperty.logProperties(root: PropertyName) {
-            localOnly(root.append("source"), "interface")
+        override fun LogPropertyRegistry.logProperties(root: PropertyName) {
+            register(root.append("source"), "interface")
         }
 
         class Okay : ActivityStatus.Okay<PropertyActivity>()
@@ -147,18 +147,18 @@ class GetLogPropertiesTest {
         @StateItem(name = "shared", cascade = true)
         val shared: String = "annotation",
     ) : Activity.Snap(), LogPropertySource {
-        override fun AddLogProperty.logProperties(root: PropertyName) {
-            cascading(root.activity.state.append("shared"), null)
+        override fun LogPropertyRegistry.logProperties(root: PropertyName) {
+            register(root.activity.state.append("shared"), null) { cascade = true }
         }
 
         class Okay : ActivityStatus.Okay<NullingActivity>()
     }
 
     class DuplicateActivity : Activity.Snap(), LogPropertySource {
-        override fun AddLogProperty.logProperties(root: PropertyName) {
+        override fun LogPropertyRegistry.logProperties(root: PropertyName) {
             val key = root.activity.state.append("duplicate")
-            localOnly(key, "first")
-            localOnly(key, "second")
+            register(key, "first")
+            register(key, "second")
         }
 
         class Okay : ActivityStatus.Okay<DuplicateActivity>()

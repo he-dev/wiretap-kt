@@ -1,6 +1,8 @@
 package wiretap.util.buzz
 
 import wiretap.util.MessagePartMap
+import wiretap.util.MessagePartOptions
+import wiretap.util.MessagePartRegistry
 import wiretap.util.PropertyName
 import wiretap.util.activity
 import wiretap.util.code
@@ -44,21 +46,24 @@ class ComposeMessageDsl internal constructor() {
 class MessagePartsDsl internal constructor(
     val root: PropertyName,
     private val read: (PropertyName) -> Any?,
-    private val add: AddMessagePart,
+    private val registry: MessagePartRegistry,
 ) {
+    internal fun toList(): List<MessagePartRegistry.Item> =
+        registry.toList()
+
     operator fun get(name: PropertyName): Any? =
         read(name)
 
     fun property(
         name: PropertyName,
-        configure: MessagePartOptionsBuilder.() -> Unit = {},
-    ) = add.property(name, configure)
+        configure: MessagePartOptions.() -> Unit = {},
+    ) = registry.property(name, configure)
 
     fun discrete(
         name: PropertyName,
         value: Any?,
-        configure: MessagePartOptionsBuilder.() -> Unit = {},
-    ) = add.discrete(name, value, configure)
+        configure: MessagePartOptions.() -> Unit = {},
+    ) = registry.discrete(name, value, configure)
 }
 
 fun MessagePartsDsl.activityHeader() {

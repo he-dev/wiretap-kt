@@ -4,8 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.MessagePart
 import wiretap.util.PropertyName
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.MessagePartSource
+import wiretap.util.MessagePartRegistry
+import wiretap.util.MessagePartSource
 import wiretap.util.buzz.getMessageParts
 
 class GetMessagePartsTest {
@@ -25,7 +25,7 @@ class GetMessagePartsTest {
         @MessagePart
         val annotated: String,
     ) : MessagePartSource {
-        override fun AddMessagePart.messageParts(root: PropertyName) {
+        override fun MessagePartRegistry.messageParts(root: PropertyName) {
             discrete(PropertyName("interface"), "interface")
         }
     }

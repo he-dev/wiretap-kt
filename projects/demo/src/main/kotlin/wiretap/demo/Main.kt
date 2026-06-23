@@ -11,17 +11,16 @@ import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
 import wiretap.util.BulkItem
 import wiretap.util.Configuration
-import wiretap.util.CountOnlyBulkItem
 import wiretap.util.MessagePart
 import wiretap.util.OmitStatus
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.activity
 import wiretap.util.state
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.LogPropertySource
-import wiretap.util.buzz.MessagePartSource
+import wiretap.util.LogPropertyRegistry
+import wiretap.util.MessagePartRegistry
+import wiretap.util.LogPropertySource
+import wiretap.util.MessagePartSource
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
@@ -63,12 +62,12 @@ suspend fun parseCsv() {
 class ImportDocument(private val source: String) : Activity.Buzz(), LogPropertySource, MessagePartSource {
     override val tags: Set<String> = setOf("import")
 
-    override fun AddLogProperty.logProperties(root: PropertyName) {
-        cascading(root.activity.state.append("source"), source)
-        localOnly(root.activity.state.append("mode"), "document")
+    override fun LogPropertyRegistry.logProperties(root: PropertyName) {
+        register(root.activity.state.append("source"), source) { cascade = true }
+        register(root.activity.state.append("mode"), "document")
     }
 
-    override fun AddMessagePart.messageParts(root: PropertyName) {
+    override fun MessagePartRegistry.messageParts(root: PropertyName) {
         property(root.state.append("source")) { label = "Source" }
     }
 

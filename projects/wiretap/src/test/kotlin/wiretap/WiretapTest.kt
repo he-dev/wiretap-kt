@@ -24,8 +24,8 @@ import wiretap.util.QuickSnap
 import wiretap.util.StateItem
 import wiretap.util.activity
 import wiretap.util.state
-import wiretap.util.buzz.AddLogProperty
-import wiretap.util.buzz.LogPropertySource
+import wiretap.util.LogPropertyRegistry
+import wiretap.util.LogPropertySource
 import wiretap.core.logSnap
 
 class WiretapTest {
@@ -314,9 +314,9 @@ class WiretapTest {
         @StateItem
         val localOnly: String,
     ) : Activity.Buzz(), LogPropertySource {
-        override fun AddLogProperty.logProperties(root: PropertyName) {
-            cascading(root.activity.state.append("sourceByInterface"), source)
-            localOnly(root.activity.state.append("localByInterface"), this@ImportDocumentWithState.localOnly)
+        override fun LogPropertyRegistry.logProperties(root: PropertyName) {
+            register(root.activity.state.append("sourceByInterface"), source) { cascade = true }
+            register(root.activity.state.append("localByInterface"), this@ImportDocumentWithState.localOnly)
         }
 
         class Okay : ActivityStatus.Okay<ImportDocumentWithState>()

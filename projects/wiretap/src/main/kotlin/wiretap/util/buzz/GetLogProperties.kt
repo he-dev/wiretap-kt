@@ -3,6 +3,8 @@ package wiretap.util.buzz
 import wiretap.util.Activity
 import wiretap.util.ActivityStatusRole
 import wiretap.util.Configuration
+import wiretap.util.LogPropertyRegistry
+import wiretap.util.LogPropertySource
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
 import wiretap.util.TraceContext
@@ -48,83 +50,68 @@ fun getLogProperties(
             }
         }
 
-        // core: The current activity may publish both local and cascading properties.
-        val current = object : AddLogProperty {
-            override fun localOnly(key: PropertyName, value: Any?) = putFirst(key, value)
-            override fun cascading(key: PropertyName, value: Any?) = putFirst(key, value)
-        }
-
-        // core: Ancestors may contribute only properties explicitly marked as cascading.
-        val inherited = object : AddLogProperty {
-            override fun localOnly(key: PropertyName, value: Any?) = Unit
-            override fun cascading(key: PropertyName, value: Any?) = putFirst(key, value)
-        }
-
         // core: Interface values are collected before annotations because first claims win.
-        fun collectInterface(source: Any?, add: AddLogProperty, isCurrent: Boolean) {
+        fun collectInterface(source: Any?, add: LogPropertyRegistry, isCurrent: Boolean) {
             val propertySource = source as? LogPropertySource ?: return
+
             if (!isCurrent) {
                 with(propertySource) { add.logProperties(root) }
                 return
             }
-
             // note: Duplicate detection is local to one current-interface invocation.
             val seenKeys = mutableSetOf<String>()
-            val checked = object : AddLogProperty {
-                fun push(key: PropertyName, value: Any?) {
-                    if (!seenKeys.add(key.toString())) {
-                        Configuration.diagnosticLogger.warnAboutDuplicateLogProperty(source::class, key)
-                        return
-                    }
-
-                    // core: For the current scope it does not matter whether the value is cascading or local-only.
-                    add.localOnly(key, value)
-                }
-
-                override fun localOnly(key: PropertyName, value: Any?) = push(key, value)
-                override fun cascading(key: PropertyName, value: Any?) = push(key, value)
-            }
-
+            val checked = LogPropertyRegistry()
             with(propertySource) { checked.logProperties(root) }
+            checked.toList().forEach { item ->
+                if (!seenKeys.add(item.name.toString())) {
+                    Configuration.diagnosticLogger.warnAboutDuplicateLogProperty(source::class, item.name)
+                } else {
+                    add.register(item.name, item.value) { cascade = item.options.cascade }
+                }
+            }
         }
 
-        fun collect(source: Any?, add: AddLogProperty, isCurrent: Boolean) {
+        fun collect(source: Any?, isCurrent: Boolean) {
             source ?: return
+            val add = LogPropertyRegistry()
             collectInterface(source, add, isCurrent)
             addAnnotatedLogProperties(root.activity.state, source, add)
+
+            add.toList()
+                .filter { isCurrent || it.options.cascade }
+                .forEach { putFirst(it.name, it.value) }
         }
 
         // core: Canonical framework properties claim their keys before customizable sources.
-        current.localOnly(root.activity.role, activity.role)
-        current.localOnly(root.activity.depth, activities.lastIndex)
-        current.localOnly(root.activity.path, activities.asReversed().joinToString("/") { it.name })
-        current.localOnly(root.activity.name, activity.name)
-        current.localOnly(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
-        current.localOnly(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
-        current.localOnly(root.activity.status.code, status.code)
-        current.localOnly(root.activity.status.role, (status as? ActivityStatusRole)?.role)
+        putFirst(root.activity.role, activity.role)
+        putFirst(root.activity.depth, activities.lastIndex)
+        putFirst(root.activity.path, activities.asReversed().joinToString("/") { it.name })
+        putFirst(root.activity.name, activity.name)
+        putFirst(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
+        putFirst(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
+        putFirst(root.activity.status.code, status.code)
+        putFirst(root.activity.status.role, (status as? ActivityStatusRole)?.role)
 
         // core: A null trace context means the resolved configuration omitted trace publication.
         if (traceContext != null) {
-            current.localOnly(root.traceId, traceContext.traceId)
-            current.localOnly(root.spanId, traceContext.spanId)
-            current.localOnly(root.parentSpanId, traceContext.parentSpanId)
+            putFirst(root.traceId, traceContext.traceId)
+            putFirst(root.spanId, traceContext.spanId)
+            putFirst(root.parentSpanId, traceContext.parentSpanId)
         }
 
         // core: Status values are more specific than activity values.
-        collect(status, current, true)
+        collect(status, isCurrent = true)
 
         // core: Natural scope iteration runs from the current activity toward the root.
         activities.withIndex().forEach { (index, item) ->
-            val add = if (index == 0) current else inherited
-            collect(item, add, isCurrent = index == 0)
+            collect(item, isCurrent = index == 0)
         }
     }
 
 internal fun addAnnotatedLogProperties(
     prefix: PropertyName,
     source: Any,
-    add: AddLogProperty,
+    add: LogPropertyRegistry,
 ) {
     // core: StateItem properties are relative to the activity-state namespace.
     findAnnotatedProperties<StateItem>(source)
@@ -136,10 +123,6 @@ internal fun addAnnotatedLogProperties(
             val key = prefix + PropertyName.parse(name)
 
             // core: The annotation chooses whether this value may cross a scope boundary.
-            if (property.annotation.cascade) {
-                add.cascading(key, value)
-            } else {
-                add.localOnly(key, value)
-            }
+            add.register(key, value) { cascade = property.annotation.cascade }
         }
 }

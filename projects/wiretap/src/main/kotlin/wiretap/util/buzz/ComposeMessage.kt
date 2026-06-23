@@ -1,6 +1,7 @@
 package wiretap.util.buzz
 
 import wiretap.util.Activity
+import wiretap.util.MessagePartRegistry
 import wiretap.util.PropertyName
 import wiretap.util.activity
 
@@ -19,11 +20,15 @@ class ComposeMessage internal constructor(
         val context = MessagePartsDsl(
             root = root,
             read = { properties[it.toString()] },
-            add = AddMessagePart(parts) { properties[it.toString()] },
+            registry = MessagePartRegistry { properties[it.toString()] },
         )
 
         registrations.forEach { registration ->
             context.registration()
+        }
+
+        context.toList().forEach { part ->
+            parts.push(part.name, part.value, part.options)
         }
 
         val arranged = ArrangePartsDsl.arrange(root, parts, arrange)

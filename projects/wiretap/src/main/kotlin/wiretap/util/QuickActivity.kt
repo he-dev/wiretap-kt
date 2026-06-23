@@ -1,7 +1,5 @@
 package wiretap.util
 
-import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.MessagePartSource
 
 class QuickBuzz(
     override val name: String,
@@ -82,7 +80,7 @@ class QuickBulk(
 private interface QuickMessageSource : MessagePartSource {
     val message: String?
 
-    override fun AddMessagePart.messageParts(root: PropertyName) {
+    override fun MessagePartRegistry.messageParts(root: PropertyName) {
         message?.let { discrete(root.append("message"), it) }
     }
 }

@@ -1,8 +1,8 @@
 package wiretap.util
 
-data class MessagePartOptions(
-    val label: String? = null,
-    val style: String = LabelStyle.AS_IS,
-    val separator: String = ": ",
-    val format: String? = null,
-)
+class MessagePartOptions {
+    var label: String? = null
+    var style: String = LabelStyle.AS_IS
+    var separator: String = ": "
+    var format: String? = null
+}
