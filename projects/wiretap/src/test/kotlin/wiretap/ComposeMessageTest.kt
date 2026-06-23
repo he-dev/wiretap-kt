@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.Activity
 import wiretap.util.ActivityStatus
-import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 import wiretap.util.activity
 import wiretap.util.code
@@ -26,11 +25,7 @@ class ComposeMessageTest {
             include {
                 activityHeader()
                 activityDuration()
-                push(
-                    PropertyName("custom"),
-                    this[PropertyName("value")],
-                    MessagePartOptions(label = "Custom"),
-                )
+                discrete(PropertyName("custom"), this[PropertyName("value")]) { label = "Custom" }
             }
             arrange {
                 positional(root.activity.name)
@@ -65,8 +60,8 @@ class ComposeMessageTest {
             include {
                 activityHeader()
                 activityDuration()
-                push(PropertyName("second"), "Second")
-                push(PropertyName("first"), "First")
+                discrete(PropertyName("second"), "Second")
+                discrete(PropertyName("first"), "First")
             }
             arrange {
                 positional(root.activity.name)

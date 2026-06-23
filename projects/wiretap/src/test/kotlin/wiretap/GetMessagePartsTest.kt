@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import wiretap.util.MessagePart
 import wiretap.util.PropertyName
 import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.MessagePartSource
 import wiretap.util.buzz.getMessageParts
 
@@ -14,7 +13,7 @@ class GetMessagePartsTest {
     fun getsMessagePartsFromInterfacesAndAnnotations() {
         val parts = getMessageParts(
             root = PropertyName("activity"),
-            get = GetLogProperty { null },
+            properties = emptyMap(),
             Source("annotated"),
         )
 
@@ -26,12 +25,8 @@ class GetMessagePartsTest {
         @MessagePart
         val annotated: String,
     ) : MessagePartSource {
-        override fun messageParts(
-            root: PropertyName,
-            get: GetLogProperty,
-            add: AddMessagePart,
-        ) {
-            add("interface", "interface")
+        override fun AddMessagePart.messageParts(root: PropertyName) {
+            discrete(PropertyName("interface"), "interface")
         }
     }
 }

@@ -1,7 +1,6 @@
 package wiretap.util
 
 import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.MessagePartSource
 
 class QuickBuzz(
@@ -83,7 +82,7 @@ class QuickBulk(
 private interface QuickMessageSource : MessagePartSource {
     val message: String?
 
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        message?.let { add(root.append("message"), it) }
+    override fun AddMessagePart.messageParts(root: PropertyName) {
+        message?.let { discrete(root.append("message"), it) }
     }
 }

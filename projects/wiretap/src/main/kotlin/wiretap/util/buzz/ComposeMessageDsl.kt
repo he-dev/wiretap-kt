@@ -1,7 +1,6 @@
 package wiretap.util.buzz
 
 import wiretap.util.MessagePartMap
-import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 import wiretap.util.activity
 import wiretap.util.code
@@ -44,36 +43,32 @@ class ComposeMessageDsl internal constructor() {
 @ComposeMessageDslMarker
 class MessagePartsDsl internal constructor(
     val root: PropertyName,
-    private val getLogProperty: GetLogProperty,
+    private val read: (PropertyName) -> Any?,
     private val add: AddMessagePart,
 ) {
     operator fun get(name: PropertyName): Any? =
-        getLogProperty(name)
+        read(name)
 
-    fun push(
+    fun property(
+        name: PropertyName,
+        configure: MessagePartOptionsBuilder.() -> Unit = {},
+    ) = add.property(name, configure)
+
+    fun discrete(
         name: PropertyName,
         value: Any?,
-        options: MessagePartOptions = MessagePartOptions(),
-    ) {
-        add(name, value, options)
-    }
+        configure: MessagePartOptionsBuilder.() -> Unit = {},
+    ) = add.discrete(name, value, configure)
 }
 
 fun MessagePartsDsl.activityHeader() {
     val activity = root.activity
-    push(
-        activity.name,
-        "${this[activity.name]}[${this[activity.status.code]}]",
-    )
+    discrete(activity.name, "${this[activity.name]}[${this[activity.status.code]}]")
 }
 
 fun MessagePartsDsl.activityDuration() {
     val duration = root.activity.durationMs
-    push(
-        duration,
-        this[duration]?.let { "$it ms" } ?: "N/A",
-        MessagePartOptions(label = "Duration"),
-    )
+    discrete(duration, this[duration]?.let { "$it ms" } ?: "N/A") { label = "Duration" }
 }
 
 @ComposeMessageDslMarker

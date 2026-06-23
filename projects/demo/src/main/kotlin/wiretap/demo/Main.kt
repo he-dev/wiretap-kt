@@ -13,7 +13,6 @@ import wiretap.util.BulkItem
 import wiretap.util.Configuration
 import wiretap.util.CountOnlyBulkItem
 import wiretap.util.MessagePart
-import wiretap.util.MessagePartOptions
 import wiretap.util.OmitStatus
 import wiretap.util.PropertyName
 import wiretap.util.StateItem
@@ -21,7 +20,6 @@ import wiretap.util.activity
 import wiretap.util.state
 import wiretap.util.buzz.AddLogProperty
 import wiretap.util.buzz.AddMessagePart
-import wiretap.util.buzz.GetLogProperty
 import wiretap.util.buzz.LogPropertySource
 import wiretap.util.buzz.MessagePartSource
 
@@ -70,12 +68,8 @@ class ImportDocument(private val source: String) : Activity.Buzz(), LogPropertyS
         localOnly(root.activity.state.append("mode"), "document")
     }
 
-    override fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart) {
-        add(
-            root.append("source"),
-            source,
-            MessagePartOptions(label = "Source"),
-        )
+    override fun AddMessagePart.messageParts(root: PropertyName) {
+        property(root.state.append("source")) { label = "Source" }
     }
 
     class Okay(val recordsSaved: Int) : ActivityStatus.Okay<ImportDocument>()

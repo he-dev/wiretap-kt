@@ -12,7 +12,6 @@ import wiretap.util.MessagePart
 import wiretap.util.LogEntry
 import wiretap.util.SnapScope
 import wiretap.util.StateItem
-import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 import wiretap.util.activity
 import wiretap.util.code
@@ -34,14 +33,10 @@ class CreateLogEntryTest {
         val status = EntryActivity.Fail(exception)
         val factory = CreateLogEntry(PropertyName().wiretap, composeMessage {
             include {
-                push(
-                    PropertyName("record"),
-                    this[root.activity.state.append("recordId")],
-                    MessagePartOptions(
-                        label = "Record",
-                        separator = " ",
-                    ),
-                )
+                discrete(PropertyName("record"), this[root.activity.state.append("recordId")]) {
+                    label = "Record"
+                    separator = " "
+                }
             }
             arrange {
                 positional(PropertyName("record"))
@@ -80,7 +75,7 @@ class CreateLogEntryTest {
             include {
                 activityHeader()
                 activityDuration()
-                push(PropertyName("prefix"), "Prefix")
+                discrete(PropertyName("prefix"), "Prefix")
             }
             arrange {
                 positional(root.activity.name)
@@ -122,7 +117,7 @@ class CreateLogEntryTest {
             include {
                 activityHeader()
                 activityDuration()
-                push(root.activity.name, "Custom")
+                discrete(root.activity.name, "Custom")
             }
             arrange {
                 positional(root.activity.name)

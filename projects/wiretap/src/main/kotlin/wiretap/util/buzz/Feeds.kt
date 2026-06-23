@@ -1,5 +1,6 @@
 package wiretap.util.buzz
 
+import wiretap.util.MessagePartMap
 import wiretap.util.MessagePartOptions
 import wiretap.util.PropertyName
 
@@ -8,31 +9,44 @@ interface AddLogProperty {
     fun cascading(key: PropertyName, value: Any?)
 }
 
-fun interface AddMessagePart {
-    fun push(
+class AddMessagePart internal constructor(
+    private val parts: MessagePartMap,
+    private val get: (PropertyName) -> Any?,
+) {
+    fun property(
+        name: PropertyName,
+        configure: MessagePartOptionsBuilder.() -> Unit = {},
+    ) = discrete(name, get(name), configure)
+
+    fun discrete(
         name: PropertyName,
         value: Any?,
-        options: MessagePartOptions,
-    )
-
-    operator fun invoke(
-        name: String,
-        value: Any?,
-        options: MessagePartOptions = MessagePartOptions(),
-    ) = push(PropertyName(name), value, options)
+        configure: MessagePartOptionsBuilder.() -> Unit = {},
+    ) {
+        parts.push(name, value, MessagePartOptionsBuilder().apply(configure).build())
+    }
 
     operator fun invoke(
         name: PropertyName,
-        value: Any?,
-        options: MessagePartOptions = MessagePartOptions(),
-    ) = push(name, value, options)
+        configure: MessagePartOptionsBuilder.() -> Unit = {},
+    ) = property(name, configure)
 }
 
-fun interface GetLogProperty {
-    operator fun invoke(key: String): Any?
+class MessagePartOptionsBuilder {
+    private val defaults = MessagePartOptions()
 
-    operator fun invoke(key: PropertyName): Any? =
-        invoke(key.toString())
+    var label: String? = null
+    var style: String = defaults.style
+    var separator: String = defaults.separator
+    var format: String? = null
+
+    internal fun build(): MessagePartOptions =
+        MessagePartOptions(
+            label = label,
+            style = style,
+            separator = separator,
+            format = format,
+        )
 }
 
 interface LogPropertySource {
@@ -40,5 +54,5 @@ interface LogPropertySource {
 }
 
 interface MessagePartSource {
-    fun messageParts(root: PropertyName, get: GetLogProperty, add: AddMessagePart)
+    fun AddMessagePart.messageParts(root: PropertyName)
 }

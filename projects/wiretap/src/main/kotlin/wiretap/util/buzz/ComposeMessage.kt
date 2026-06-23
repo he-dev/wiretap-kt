@@ -15,12 +15,11 @@ class ComposeMessage internal constructor(
         properties: Map<String, Any?>,
         activity: Activity,
     ): String {
-        val get = GetLogProperty { properties[it] }
-        val parts = getMessageParts(root.activity, get, activity, activity.status)
+        val parts = getMessageParts(root.activity, properties, activity, activity.status)
         val context = MessagePartsDsl(
             root = root,
-            getLogProperty = get,
-            add = AddMessagePart(parts::push),
+            read = { properties[it.toString()] },
+            add = AddMessagePart(parts) { properties[it.toString()] },
         )
 
         registrations.forEach { registration ->
