@@ -2,15 +2,22 @@ package wiretap.util
 
 data class PropertyName(
     val parts: List<String> = emptyList(),
-    val separator: String = ".",
 ) {
-    constructor(vararg parts: String) : this(parts.toList())
+    constructor(vararg parts: String) : this(parts.flatMap { it.split('.') })
+
+    operator fun plus(next: PropertyName): PropertyName =
+        copy(parts = parts + next.parts)
 
     fun append(vararg next: String): PropertyName =
         copy(parts = parts + next)
 
     override fun toString(): String =
-        parts.joinToString(separator)
+        parts.joinToString(".")
+
+    companion object {
+        fun parse(value: String): PropertyName =
+            PropertyName(value)
+    }
 }
 
 val PropertyName.wiretap: PropertyName get() = append("wiretap")

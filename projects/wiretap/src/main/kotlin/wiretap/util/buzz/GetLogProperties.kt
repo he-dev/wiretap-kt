@@ -133,8 +133,7 @@ internal fun addAnnotatedLogProperties(
             val name = property.annotation.name.nullIfUnset() ?: property.name
             val value = property.value(source)
 
-            // meta: Dotted annotation names remain structured relative property paths.
-            val key = prefix.append(*name.split('.').toTypedArray())
+            val key = prefix + PropertyName.parse(name)
 
             // core: The annotation chooses whether this value may cross a scope boundary.
             if (property.annotation.cascade) {
