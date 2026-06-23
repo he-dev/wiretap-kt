@@ -1,6 +1,5 @@
 package wiretap.util.buzz
 
-import wiretap.util.MessagePartMap
 import wiretap.util.MessagePartOptions
 import wiretap.util.MessagePartRegistry
 import wiretap.util.PropertyName
@@ -48,9 +47,6 @@ class MessagePartsDsl internal constructor(
     private val read: (PropertyName) -> Any?,
     private val registry: MessagePartRegistry,
 ) {
-    internal fun toList(): List<MessagePartRegistry.Item> =
-        registry.toList()
-
     operator fun get(name: PropertyName): Any? =
         read(name)
 
@@ -79,33 +75,33 @@ fun MessagePartsDsl.activityDuration() {
 @ComposeMessageDslMarker
 class ArrangePartsDsl private constructor(
     val root: PropertyName,
-    private val parts: MessagePartMap,
+    private val parts: MessagePartRegistry,
 ) {
-    private val arranged = mutableListOf<MessagePartMap.Entry>()
+    private val arranged = MessagePartRegistry()
 
     fun positional(name: PropertyName) {
-        parts.pop(name)?.let(arranged::add)
+        parts.pop(name)?.let(arranged::push)
     }
 
     fun remaining() {
-        arranged += parts.values
+        parts.values.forEach(arranged::push)
         parts.clear()
     }
 
     internal companion object {
         fun arrange(
             root: PropertyName,
-            parts: MessagePartMap,
+            parts: MessagePartRegistry,
             configure: ArrangePartsDsl.() -> Unit,
-        ): List<MessagePartMap.Entry> =
+        ): MessagePartRegistry =
             ArrangePartsDsl(root, parts).apply(configure).arranged
     }
 }
 
 @ComposeMessageDslMarker
 class JoinMessageDsl internal constructor(
-    entries: List<MessagePartMap.Entry>,
-) : List<MessagePartMap.Entry> by entries
+    parts: MessagePartRegistry,
+) : Iterable<MessagePartRegistry.Entry> by parts.values
 
 fun composeMessage(
     configure: ComposeMessageDsl.() -> Unit = {},

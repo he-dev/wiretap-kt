@@ -28,15 +28,15 @@ fun getLogProperties(
     root: PropertyName,
     activities: List<Activity>,
     traceContext: TraceContext?,
-): Map<String, Any?> =
-    buildMap {
+): Map<String, Any> =
+    buildMap<String, Any> {
         val activity = activities.first()
         val status = activity.status
         // core: A null value claims its key without entering the result map.
         val nullValueKeys = mutableSetOf<String>()
 
         // core: Sources are processed strongest-first, so the first claim owns a key.
-        fun putFirst(key: PropertyName, value: Any?) {
+        fun putOnce(key: PropertyName, value: Any?) {
             val name = key.toString()
 
             // core: A null value claims its key without entering the result map.
@@ -51,52 +51,52 @@ fun getLogProperties(
         }
 
         // core: Interface values are collected before annotations because first claims win.
-        fun collectInterface(source: Any?, add: LogPropertyRegistry, isCurrent: Boolean) {
+        fun registerCustom(source: Any?, registry: LogPropertyRegistry, isCurrent: Boolean) {
             val propertySource = source as? LogPropertySource ?: return
 
-            if (!isCurrent) {
-                with(propertySource) { add.logProperties(root) }
-                return
-            }
-            // note: Duplicate detection is local to one current-interface invocation.
-            val seenKeys = mutableSetOf<String>()
-            val checked = LogPropertyRegistry()
-            with(propertySource) { checked.logProperties(root) }
-            checked.toList().forEach { item ->
-                if (!seenKeys.add(item.name.toString())) {
-                    Configuration.diagnosticLogger.warnAboutDuplicateLogProperty(source::class, item.name)
-                } else {
-                    add.register(item.name, item.value) { cascade = item.options.cascade }
+            if (isCurrent) {
+                // note: Duplicate detection is local to one current-interface invocation.
+                val seenKeys = mutableSetOf<String>()
+                val checked = LogPropertyRegistry()
+                with(propertySource) { checked.logProperties(root) }
+                checked.toList().forEach { item ->
+                    if (seenKeys.add(item.name.toString())) {
+                        registry.register(item.name, item.value) { cascade = item.options.cascade }
+                    } else {
+                        Configuration.diagnosticLogger.warnAboutDuplicateLogProperty(source::class, item.name)
+                    }
                 }
+            } else {
+                with(propertySource) { registry.logProperties(root) }
             }
         }
 
         fun collect(source: Any?, isCurrent: Boolean) {
             source ?: return
-            val add = LogPropertyRegistry()
-            collectInterface(source, add, isCurrent)
-            addAnnotatedLogProperties(root.activity.state, source, add)
+            val registry = LogPropertyRegistry()
+            registerCustom(source, registry, isCurrent)
+            registerStateItems(root.activity.state, source, registry)
 
-            add.toList()
+            registry.toList()
                 .filter { isCurrent || it.options.cascade }
-                .forEach { putFirst(it.name, it.value) }
+                .forEach { putOnce(it.name, it.value) }
         }
 
         // core: Canonical framework properties claim their keys before customizable sources.
-        putFirst(root.activity.role, activity.role)
-        putFirst(root.activity.depth, activities.lastIndex)
-        putFirst(root.activity.path, activities.asReversed().joinToString("/") { it.name })
-        putFirst(root.activity.name, activity.name)
-        putFirst(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
-        putFirst(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
-        putFirst(root.activity.status.code, status.code)
-        putFirst(root.activity.status.role, (status as? ActivityStatusRole)?.role)
+        putOnce(root.activity.role, activity.role)
+        putOnce(root.activity.depth, activities.lastIndex)
+        putOnce(root.activity.path, activities.asReversed().joinToString("/") { it.name })
+        putOnce(root.activity.name, activity.name)
+        putOnce(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
+        putOnce(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
+        putOnce(root.activity.status.code, status.code)
+        putOnce(root.activity.status.role, (status as? ActivityStatusRole)?.role)
 
         // core: A null trace context means the resolved configuration omitted trace publication.
         if (traceContext != null) {
-            putFirst(root.traceId, traceContext.traceId)
-            putFirst(root.spanId, traceContext.spanId)
-            putFirst(root.parentSpanId, traceContext.parentSpanId)
+            putOnce(root.traceId, traceContext.traceId)
+            putOnce(root.spanId, traceContext.spanId)
+            putOnce(root.parentSpanId, traceContext.parentSpanId)
         }
 
         // core: Status values are more specific than activity values.
@@ -108,21 +108,19 @@ fun getLogProperties(
         }
     }
 
-internal fun addAnnotatedLogProperties(
+internal fun registerStateItems(
     prefix: PropertyName,
     source: Any,
-    add: LogPropertyRegistry,
+    registry: LogPropertyRegistry,
 ) {
     // core: StateItem properties are relative to the activity-state namespace.
     findAnnotatedProperties<StateItem>(source)
         .forEach { property ->
             // core: An omitted annotation name falls back to the Kotlin property name.
-            val name = property.annotation.name.nullIfUnset() ?: property.name
+            val name = prefix + (property.annotation.name.nullIfUnset() ?: property.name).let(PropertyName::parse)
             val value = property.value(source)
 
-            val key = prefix + PropertyName.parse(name)
-
             // core: The annotation chooses whether this value may cross a scope boundary.
-            add.register(key, value) { cascade = property.annotation.cascade }
+            registry.register(name, value) { cascade = property.annotation.cascade }
         }
 }

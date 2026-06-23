@@ -17,8 +17,8 @@ class GetMessagePartsTest {
             Source("annotated"),
         )
 
-        assertEquals("interface", parts[PropertyName("interface")]?.value)
-        assertEquals("annotated", parts[PropertyName("annotated")]?.value)
+        assertEquals("interface", parts.pop(PropertyName("interface"))?.value)
+        assertEquals("annotated", parts.pop(PropertyName("annotated"))?.value)
     }
 
     class Source(
