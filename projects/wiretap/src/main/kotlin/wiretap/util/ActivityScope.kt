@@ -31,8 +31,8 @@ abstract class ActivityScope<A : Activity>(
         // core: Initialize with default values.
         val details = buildMap {
             put(root.activity.name, activity.name)
-            put(root.activity.status.code, activity.status)
-            put(root.activity.traceId, traceContext.traceId)
+            put(root.activity.status.code, activity.status.code)
+            put(root.activity.status.role, (activity.status as? ActivityStatusRole)?.role)
 
             put(root.activity.role, activity.role)
             put(root.activity.depth, activities.lastIndex)
@@ -95,7 +95,14 @@ abstract class ActivityScope<A : Activity>(
         }
 
         val message = configuration.composeMessage(root, details, remarks)
-        logger.log(activity.status.level, details.mapKeys { it.toString() }, message, activity.status.exception)
+        logger.log(
+            activity.status.level,
+            details.asSequence()
+                .mapNotNull { (name, value) -> value?.let { name.toString() to it } }
+                .toMap(),
+            message,
+            activity.status.exception,
+        )
     }
 
     override fun close() {

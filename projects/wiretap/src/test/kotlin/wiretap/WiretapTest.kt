@@ -183,7 +183,7 @@ class WiretapTest {
     }
 
     private fun statusCode(log: CapturedLog): String =
-        (log["wiretap.activity.status.code"] as ActivityStatus<*>).code
+        log["wiretap.activity.status.code"] as String
 
     class ImportDocument : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ImportDocument>()

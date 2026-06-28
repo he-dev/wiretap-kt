@@ -10,9 +10,7 @@ data class CapturedLog(
     val exception: Throwable?,
 ) {
     operator fun get(name: String): Any? =
-        details[name] ?: details.entries
-            .firstOrNull { it.key.startsWith("$name=") }
-            ?.value
+        details[name]
 }
 
 class CapturingActivityLogger(
