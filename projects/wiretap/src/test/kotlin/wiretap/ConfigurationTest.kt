@@ -15,7 +15,7 @@ class ConfigurationTest {
     fun configuresDiagnosticLogger() {
         val previous = Configuration.diagnosticLogger
         val adapter = object : ActivityLogger {
-            override fun log(entry: LogEntry) = Unit
+            override fun log(entry: LogEntry, message: String) = Unit
         }
 
         try {
@@ -85,10 +85,12 @@ class ConfigurationTest {
     @Test
     fun fallsBackWhenNamedVariantIsMissing() {
         val diagnostics = mutableListOf<LogEntry>()
+        val messages = mutableListOf<String>()
         val previous = Configuration.diagnosticLogger
         val adapter = object : ActivityLogger {
-            override fun log(entry: LogEntry) {
+            override fun log(entry: LogEntry, message: String) {
                 diagnostics += entry
+                messages += message
             }
         }
 
@@ -105,7 +107,7 @@ class ConfigurationTest {
         assertEquals(
             "Configuration variant 'missing' requested by ${MisconfiguredActivity::class.java.name} " +
                 "was not found; using the default one.",
-            diagnostics.single().message,
+            messages.single(),
         )
     }
 

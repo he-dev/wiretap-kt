@@ -1,4 +1,4 @@
-package wiretap.util.buzz
+package wiretap.meta.buzz
 
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KAnnotatedElement

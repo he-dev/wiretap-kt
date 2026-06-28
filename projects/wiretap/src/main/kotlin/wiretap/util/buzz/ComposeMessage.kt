@@ -1,33 +1,86 @@
 package wiretap.util.buzz
 
-import wiretap.util.Activity
-import wiretap.util.PropertyName
+import wiretap.util.DottedName
+import wiretap.util.RemarkBuilder
 import wiretap.util.activity
+import wiretap.util.code
+import wiretap.util.durationMs
+import wiretap.util.name
+import wiretap.util.status
 
-// TODO: Remove the overlapping message pipeline from CreateLogEntry when this draft is integrated.
-class ComposeMessage internal constructor(
-    private val registrations: List<MessagePartsDsl.() -> Unit>,
-    private val arrange: ArrangePartsDsl.() -> Unit,
-    private val join: JoinMessageDsl.() -> String,
-) {
-    operator fun invoke(
-        root: PropertyName,
-        properties: Map<String, Any>,
-        activity: Activity,
+@DslMarker
+@Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
+@Retention(AnnotationRetention.BINARY)
+annotation class ComposeMessageDslMarker
+
+@ComposeMessageDslMarker
+class ComposeMessage internal constructor() {
+
+    private var remarks: (RemarkBuilder.() -> Unit) = {}
+    private var arrange: (ArrangeRemarks.() -> Unit) = { addRemaining() }
+    private var join: (JoinRemarks.() -> String) = { joinToString("; ") { it } }
+
+    fun remarks(block: RemarkBuilder.() -> Unit) {
+        remarks = block
+    }
+
+    fun arrange(block: ArrangeRemarks.() -> Unit) {
+        arrange = block
+    }
+
+    fun join(block: JoinRemarks.() -> String) {
+        join = block
+    }
+
+    internal operator fun invoke(
+        root: DottedName,
+        details: MutableMap<DottedName, Any?>,
+        remarks: MutableMap<DottedName, String>
     ): String {
-        val parts = getMessageParts(root.activity, properties, activity, activity.status)
-        val context = MessagePartsDsl(
-            root = root,
-            read = { properties[it.toString()] },
-            registry = parts,
-        )
-
-        registrations.forEach { registration ->
-            context.registration()
-        }
-
-        val arranged = ArrangePartsDsl.arrange(root, parts, arrange)
-
-        return JoinMessageDsl(arranged).join()
+        remarks(RemarkBuilder(root, details, remarks))
+        val arranged = emptyList<String>().toMutableList()
+        arrange(ArrangeRemarks(root, remarks, arranged))
+        return join(JoinRemarks(arranged))
     }
 }
+
+fun RemarkBuilder.addActivity() {
+    val activity = root.activity
+    add(activity.name, render = { "${details[it]}[${details[activity.status.code]}]" })
+}
+
+fun RemarkBuilder.addActivityDuration() {
+    val duration = root.activity.durationMs
+    add(duration, render = { name -> details[name]?.let { "$it ms" } ?: "N/A" }) { label = "Duration" }
+}
+
+@ComposeMessageDslMarker
+class ArrangeRemarks internal constructor(
+    val root: DottedName,
+    private val remarks: MutableMap<DottedName, String>,
+    private val arranged: MutableList<String>
+) {
+    fun add(name: DottedName) {
+        remarks.remove(name)?.let { arranged.add(it) }
+    }
+
+    fun addRemaining() {
+        remarks.forEach { arranged.add(it.value) }
+        remarks.clear()
+    }
+}
+
+@ComposeMessageDslMarker
+class JoinRemarks internal constructor(
+    remarks: List<String>,
+) : Iterable<String> by remarks
+
+fun composeMessage(
+    block: ComposeMessage.() -> Unit = {},
+): ComposeMessage {
+    val compose = ComposeMessage()
+    block(compose)
+    return compose
+}
+
+

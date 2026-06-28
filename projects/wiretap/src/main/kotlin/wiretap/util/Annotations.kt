@@ -2,7 +2,7 @@ package wiretap.util
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class StateItem(
+annotation class Detail(
     val name: String = Unset,
     val cascade: Boolean = false,
 )
@@ -12,7 +12,7 @@ const val Unset: String = "\u0000"
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class MessagePart(
+annotation class Remark(
     val label: String = Unset,
     val separator: String = ": ",
     val format: String = Unset,

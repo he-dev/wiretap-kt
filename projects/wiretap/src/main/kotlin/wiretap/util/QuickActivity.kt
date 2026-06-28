@@ -77,10 +77,10 @@ class QuickBulk(
     ) : ActivityStatus.Fail<QuickBulk>(exception), QuickMessageSource
 }
 
-private interface QuickMessageSource : MessagePartSource {
+private interface QuickMessageSource : RemarkSource {
     val message: String?
 
-    override fun MessagePartRegistry.messageParts(root: PropertyName) {
-        message?.let { discrete(root.append("message"), it) }
+    override fun RemarkBuilder.remarks() {
+        add(root.append("message"), message)
     }
 }

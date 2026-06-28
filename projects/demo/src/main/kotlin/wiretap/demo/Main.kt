@@ -11,16 +11,16 @@ import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
 import wiretap.util.BulkItem
 import wiretap.util.Configuration
-import wiretap.util.MessagePart
+import wiretap.util.Remark
 import wiretap.util.OmitStatus
-import wiretap.util.PropertyName
-import wiretap.util.StateItem
+import wiretap.util.DottedName
+import wiretap.util.Detail
+import wiretap.util.DetailBuilder
+import wiretap.util.DetailSource
 import wiretap.util.activity
 import wiretap.util.state
-import wiretap.util.LogPropertyRegistry
-import wiretap.util.MessagePartRegistry
-import wiretap.util.LogPropertySource
-import wiretap.util.MessagePartSource
+import wiretap.util.RemarkBuilder
+import wiretap.util.RemarkSource
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 
@@ -59,16 +59,16 @@ suspend fun parseCsv() {
     }
 }
 
-class ImportDocument(private val source: String) : Activity.Buzz(), LogPropertySource, MessagePartSource {
+class ImportDocument(private val source: String) : Activity.Buzz(), DetailSource, RemarkSource {
     override val tags: Set<String> = setOf("import")
 
-    override fun LogPropertyRegistry.logProperties(root: PropertyName) {
-        register(root.activity.state.append("source"), source) { cascade = true }
-        register(root.activity.state.append("mode"), "document")
+    override fun DetailBuilder.details() {
+        add(DottedName("source"), source) { cascade = true }
+        add(DottedName("mode"), "document")
     }
 
-    override fun MessagePartRegistry.messageParts(root: PropertyName) {
-        property(root.state.append("source")) { label = "Source" }
+    override fun RemarkBuilder.remarks() {
+        add(root.activity.state.append("source")) { label = "Source" }
     }
 
     class Okay(val recordsSaved: Int) : ActivityStatus.Okay<ImportDocument>()
@@ -83,12 +83,12 @@ class ParseDocument(private val documentType: String) : Activity.Buzz() {
 // note: The missing variant demonstrates diagnostics and the default-configuration fallback.
 @Configuration.Use("missing")
 class SaveRecord(
-    @StateItem
-    @MessagePart("Row")
+    @Detail
+    @Remark("Row")
     val rowIndex: Int,
 
-    @StateItem
-    @MessagePart("Record")
+    @Detail
+    @Remark("Record")
     val recordId: String,
 ) : Activity.Snap() {
     override val tags: Set<String> = setOf("storage")

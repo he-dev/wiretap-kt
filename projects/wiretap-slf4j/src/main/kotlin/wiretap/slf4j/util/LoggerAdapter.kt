@@ -4,19 +4,23 @@ import org.slf4j.Logger
 import org.slf4j.event.Level
 import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatusLevel
-import wiretap.util.LogEntry
 import kotlin.collections.iterator
 
 class LoggerAdapter(val logger: Logger) : ActivityLogger {
-    override fun log(entry: LogEntry) {
-        val builder = logger.atLevel(entry.level.toSlf4jLevel())
+    override fun log(
+        level: ActivityStatusLevel,
+        details: Map<String, Any?>,
+        message: String,
+        exception: Throwable?
+    ) {
+        val builder = logger.atLevel(level.toSlf4jLevel())
 
-        for ((key, value) in entry.properties) {
+        for ((key, value) in details) {
             builder.addKeyValue(key, value)
         }
 
-        entry.exception?.let { builder.setCause(it) }
-        builder.log(entry.message)
+        exception?.let { builder.setCause(it) }
+        builder.log(message)
     }
 }
 

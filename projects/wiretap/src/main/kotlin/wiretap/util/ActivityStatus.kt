@@ -47,13 +47,13 @@ abstract class ActivityStatus<A : Activity>(
 
         override val level: ActivityStatusLevel = ActivityStatusLevel.Error
 
-        @MessagePart("Exception")
+        @Remark("Exception")
         val exceptionMessage: String?
             get() = exception?.message
     }
 
     class Void<A : Activity>(
-        @MessagePart
+        @Remark
         val reason: String = "The activity scope exited without an explicit last status.",
     ) : ActivityStatus<A>(), Last {
         override val code: String = "Void"

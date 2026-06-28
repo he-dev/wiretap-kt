@@ -52,18 +52,18 @@ abstract class Activity protected constructor(
         // core: Bulk calculations live with their activity, so publication needs no scope-specific path.
         internal val math = BulkMath()
 
-        @StateItem("bulk.item_count")
-        @MessagePart(label = "Item Count")
+        @Detail("bulk.item_count")
+        @Remark(label = "Item Count")
         val itemCount: Int
             get() = math.itemCount
 
-        @StateItem("bulk.duration_s")
-        @MessagePart(label = "Item Duration", format = "%.3f s")
+        @Detail("bulk.duration_s")
+        @Remark(label = "Item Duration", format = "%.3f s")
         val durationS: Double
             get() = math.durationMs / 1_000.0
 
-        @StateItem("bulk.throughput_s")
-        @MessagePart(label = "Throughput", format = "%.1f/s")
+        @Detail("bulk.throughput_s")
+        @Remark(label = "Throughput", format = "%.1f/s")
         val throughputS: Double
             get() = math.throughputMs * 1_000.0
     }

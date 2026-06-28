@@ -1,6 +1,8 @@
 package wiretap.util
 
 import wiretap.meta.ActivityScopeAmbient
+import wiretap.meta.buzz.findAnnotatedProperties
+import kotlin.sequences.forEach
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
@@ -9,7 +11,7 @@ abstract class ActivityScope<A : Activity>(
     traceId: String? = null,
 ) : AutoCloseable, Iterable<ActivityScope<*>> {
     private var ambient: AutoCloseable? = null
-    private val variant = Configuration.resolve(activity)
+    private val configuration = Configuration.resolve(activity)
 
     val traceContext: TraceContext = TraceContext.create(parent?.traceContext, traceId)
 
@@ -22,12 +24,78 @@ abstract class ActivityScope<A : Activity>(
     abstract fun setStatus(status: ActivityStatus<A>);
 
     protected fun log() {
-        logger.log(
-            variant.createLogEntry.from(
-                activities = map { it.activity },
-                traceContext = traceContext,
-            ),
-        )
+
+        val root = configuration.root
+        val activities = map { it.activity }
+
+        // core: Initialize with default values.
+        val details = buildMap {
+            put(root.activity.name, activity.name)
+            put(root.activity.status.code, activity.status)
+            put(root.activity.traceId, traceContext.traceId)
+
+            put(root.activity.role, activity.role)
+            put(root.activity.depth, activities.lastIndex)
+            put(root.activity.path, activities.asReversed().joinToString("/") { it.name })
+            put(root.activity.tags, activity.tags.takeIf { it.isNotEmpty() })
+            put(root.activity.durationMs, (activity as? Activity.Buzz)?.durationMs)
+
+            // core: A null trace context means the resolved configuration omitted trace publication.
+            put(root.traceId, traceContext.traceId)
+            put(root.spanId, traceContext.spanId)
+            put(root.parentSpanId, traceContext.parentSpanId)
+
+        }.toMutableMap<DottedName, Any?>()
+
+        val remarks = emptyMap<DottedName, String>().toMutableMap()
+
+        // core: Scan for details first.
+        // note: Single pass.
+        activities.forEachIndexed { level, source ->
+
+            // note: Each level needs its own builder.
+            val builder = DetailBuilder(root.activity.state, level, details)
+
+            // core: Check for interfaces first as they have priority.
+            when (source) {
+                is DetailSource -> with(source) {
+                    builder.details()
+                }
+            }
+
+            // note: Scan for annotations second.
+            findAnnotatedProperties<Detail>(source).forEach { property ->
+                val annotation = property.annotation
+                val name = annotation.name.nullIfUnset() ?: property.name
+                builder.add(DottedName(name), property.value(source)) {
+                    cascade = annotation.cascade
+                }
+            }
+        }
+
+
+        // core: Scan for remarks in the same order as the details.
+        // note: Single pass.
+        for (source in listOf(activity, activity.status)) {
+            val builder = RemarkBuilder(root, details, remarks)
+            when (source) {
+                is RemarkSource -> with(source) {
+                    builder.remarks()
+                }
+            }
+            findAnnotatedProperties<Remark>(source)
+                .forEach { property ->
+                    //report(property.name, property.value(source), property.annotation)
+                    builder.add(DottedName(property.name), property.value(source)) {
+                        label = property.annotation.label.nullIfUnset()
+                        separator = property.annotation.separator
+                        format = property.annotation.format.nullIfUnset()
+                    }
+                }
+        }
+
+        val message = configuration.composeMessage(root, details, remarks)
+        logger.log(activity.status.level, details.mapKeys { it.toString() }, message, activity.status.exception)
     }
 
     override fun close() {

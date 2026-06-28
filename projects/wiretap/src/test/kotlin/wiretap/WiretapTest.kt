@@ -15,21 +15,22 @@ import wiretap.util.Configuration
 import wiretap.util.OmitStatus
 import wiretap.core.beginBuzz
 import wiretap.core.beginBulk
+import wiretap.util.LogEntryBuilder
+import wiretap.util.LogEntryFactory
 import wiretap.util.LogEntry
-import wiretap.util.MessagePart
-import wiretap.util.PropertyName
+import wiretap.util.Remark
+import wiretap.util.DottedName
 import wiretap.util.QuickBulk
 import wiretap.util.QuickItem
 import wiretap.util.QuickSnap
-import wiretap.util.StateItem
-import wiretap.util.activity
-import wiretap.util.state
-import wiretap.util.LogPropertyRegistry
-import wiretap.util.LogPropertySource
+import wiretap.util.Detail
 import wiretap.core.logSnap
 
 class WiretapTest {
     private val logger = TestActivityLogger()
+    private val messages = java.util.IdentityHashMap<LogEntry, String>()
+    private val LogEntry.message: String
+        get() = messages[this].orEmpty()
 
     @Test
     fun ambientScopeBuildsNestedPath() {
@@ -308,15 +309,17 @@ class WiretapTest {
     }
 
     class ImportDocumentWithState(
-        @StateItem(cascade = true)
+        @Detail(cascade = true)
         val source: String,
 
-        @StateItem
+        @Detail
         val localOnly: String,
-    ) : Activity.Buzz(), LogPropertySource {
-        override fun LogPropertyRegistry.logProperties(root: PropertyName) {
-            register(root.activity.state.append("sourceByInterface"), source) { cascade = true }
-            register(root.activity.state.append("localByInterface"), this@ImportDocumentWithState.localOnly)
+    ) : Activity.Buzz(), LogEntryFactory {
+        override fun LogEntryBuilder.create() {
+            features {
+                add(DottedName("sourceByInterface"), source) { cascade = true }
+                add(DottedName("localByInterface"), this@ImportDocumentWithState.localOnly)
+            }
         }
 
         class Okay : ActivityStatus.Okay<ImportDocumentWithState>()
@@ -327,10 +330,10 @@ class WiretapTest {
     }
 
     class ParseDocumentWithState(
-        @StateItem(cascade = true)
+        @Detail(cascade = true)
         val documentType: String,
 
-        @StateItem
+        @Detail
         val localOnly: String,
     ) : Activity.Buzz() {
         class Okay : ActivityStatus.Okay<ParseDocumentWithState>()
@@ -357,43 +360,44 @@ class WiretapTest {
     }
 
     class SaveRecord(
-        @StateItem
-        @MessagePart("Row")
+        @Detail
+        @Remark("Row")
         val rowIndex: Int,
 
-        @StateItem
-        @MessagePart("Record")
+        @Detail
+        @Remark("Record")
         val recordId: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<SaveRecord>()
     }
 
     class PrivateAnnotatedRecord(
-        @StateItem
-        @MessagePart("Secret")
+        @Detail
+        @Remark("Secret")
         private val secret: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<PrivateAnnotatedRecord>()
     }
 
     class MessagePartLabelCase(
-        @MessagePart
+        @Remark
         val noLabel: String,
 
-        @MessagePart("")
+        @Remark("")
         val defaultLabel: String,
 
-        @MessagePart("Alias")
+        @Remark("Alias")
         val alias: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<MessagePartLabelCase>()
     }
 
-    private class TestActivityLogger(
+    private inner class TestActivityLogger(
         private val entries: MutableList<LogEntry> = mutableListOf(),
     ) : ActivityLogger {
-        override fun log(entry: LogEntry) {
+        override fun log(entry: LogEntry, message: String) {
             entries += entry
+            messages[entry] = message
         }
     }
 }

@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import wiretap.util.Activity
 import wiretap.util.ActivityLogger
 import wiretap.util.BuzzScope
-import wiretap.util.LogEntry
 
 class ActivityScopeHierarchyTest {
     @Test
@@ -26,7 +25,7 @@ class ActivityScopeHierarchyTest {
 
     private companion object {
         val logger = object : ActivityLogger {
-            override fun log(entry: LogEntry) = Unit
+            override fun log(entry: LogEntry, message: String) = Unit
         }
     }
 }

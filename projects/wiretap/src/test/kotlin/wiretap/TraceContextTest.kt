@@ -63,7 +63,7 @@ class TraceContextTest {
 
     private companion object {
         val logger = object : ActivityLogger {
-            override fun log(entry: LogEntry) = Unit
+            override fun log(entry: LogEntry, message: String) = Unit
         }
     }
 }

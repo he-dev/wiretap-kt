@@ -2,11 +2,11 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import wiretap.util.PropertyName
+import wiretap.util.DottedName
 import wiretap.util.LabelStyle
 
 class LabelStyleTest {
-    private val name = PropertyName("wiretap", "activity", "recordID")
+    private val name = DottedName("wiretap", "activity", "recordID")
     private val label = "recordID value"
 
     @Test

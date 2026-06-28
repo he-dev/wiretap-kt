@@ -2,31 +2,34 @@ package wiretap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import wiretap.util.MessagePart
-import wiretap.util.PropertyName
-import wiretap.util.MessagePartRegistry
-import wiretap.util.MessagePartSource
+import wiretap.util.FeatureMap
+import wiretap.util.LogEntryBuilder
+import wiretap.util.LogEntryFactory
+import wiretap.util.Remark
+import wiretap.util.DottedName
 import wiretap.util.buzz.getMessageParts
 
 class GetMessagePartsTest {
     @Test
     fun getsMessagePartsFromInterfacesAndAnnotations() {
         val parts = getMessageParts(
-            root = PropertyName("activity"),
-            properties = emptyMap(),
+            root = DottedName("activity"),
+            features = FeatureMap(),
             Source("annotated"),
         )
 
-        assertEquals("interface", parts.pop(PropertyName("interface"))?.value)
-        assertEquals("annotated", parts.pop(PropertyName("annotated"))?.value)
+        assertEquals("interface", parts.pop(DottedName("interface"))?.value)
+        assertEquals("annotated", parts.pop(DottedName("activity.activity.state.annotated"))?.value)
     }
 
     class Source(
-        @MessagePart
+        @Remark
         val annotated: String,
-    ) : MessagePartSource {
-        override fun MessagePartRegistry.messageParts(root: PropertyName) {
-            discrete(PropertyName("interface"), "interface")
+    ) : LogEntryFactory {
+        override fun LogEntryBuilder.create() {
+            snippets {
+                add(DottedName("interface"), "interface")
+            }
         }
     }
 }

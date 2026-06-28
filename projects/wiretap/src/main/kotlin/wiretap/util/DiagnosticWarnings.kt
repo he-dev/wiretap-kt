@@ -8,13 +8,8 @@ internal fun ActivityLogger.warnAboutMissingConfigurationVariant(
     variant: String,
     activityType: Class<out Activity>,
 ) {
-    log(
-        LogEntry(
-            level = ActivityStatusLevel.Warning,
-            message = "Configuration variant '$variant' requested by ${activityType.name} was not found; using the default one.",
-            properties = emptyMap(),
-        ),
-    )
+    val message = "Configuration variant '$variant' requested by ${activityType.name} was not found; using the default one."
+    log(ActivityStatusLevel.Warning,emptyMap(), message, null)
 }
 
 internal fun ActivityLogger.warnAboutNonPublicAnnotatedProperty(
@@ -22,39 +17,26 @@ internal fun ActivityLogger.warnAboutNonPublicAnnotatedProperty(
     sourceType: KClass<*>,
     property: KProperty1<out Any, *>,
 ) {
-    log(
-        LogEntry(
-            level = ActivityStatusLevel.Warning,
-            message = "@${annotationType.simpleName} on non-public property '${sourceType.qualifiedName}.${property.name}' was ignored; annotated properties must be public.",
-            properties = emptyMap(),
-        ),
-    )
+    val message = "@${annotationType.simpleName} on non-public property '${sourceType.qualifiedName}.${property.name}' was ignored; annotated properties must be public."
+    log(ActivityStatusLevel.Warning,emptyMap(), message, null)
 }
 
 internal fun ActivityLogger.warnAboutDuplicateLogProperty(
     sourceType: KClass<*>,
-    property: PropertyName,
+    property: DottedName,
 ) {
-    log(
-        LogEntry(
-            level = ActivityStatusLevel.Warning,
-            message = "Log-property source '${sourceType.qualifiedName}' pushed '$property' more than once; the first value was kept.",
-            properties = emptyMap(),
-        ),
-    )
+    val message = "Log-property source '${sourceType.qualifiedName}' pushed '$property' more than once; the first value was kept."
+    log(ActivityStatusLevel.Warning,emptyMap(), message, null)
 }
 
 internal fun ActivityLogger.warnAboutLastStatusOverwrite(
     activity: Activity,
     ignoredStatus: ActivityStatus<*>,
 ) {
-    log(
-        LogEntry(
-            level = ActivityStatusLevel.Warning,
-            message = "${activity.name} status was already set to " +
-                "[${activity.status.code.lowercase(Locale.ROOT)}]; ignored later status " +
-                "[${ignoredStatus.code.lowercase(Locale.ROOT)}].",
-            properties = emptyMap(),
-        ),
-    )
+    val message = "${activity.name} status was already set to " +
+        "[${activity.status.code.lowercase(Locale.ROOT)}]; ignored later status " +
+        "[${ignoredStatus.code.lowercase(Locale.ROOT)}]."
+    log(ActivityStatusLevel.Warning,emptyMap(), message, null)
 }
+
+
