@@ -5,18 +5,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import wiretap.util.Activity
-import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
-import wiretap.util.LogEntry
 
 class ConfigurationTest {
     @Test
     fun configuresDiagnosticLogger() {
         val previous = Configuration.diagnosticLogger
-        val adapter = object : ActivityLogger {
-            override fun log(entry: LogEntry, message: String) = Unit
-        }
+        val adapter = CapturingActivityLogger()
 
         try {
             val configured = Configuration.logDiagnosticsWith(adapter)
@@ -84,15 +80,9 @@ class ConfigurationTest {
 
     @Test
     fun fallsBackWhenNamedVariantIsMissing() {
-        val diagnostics = mutableListOf<LogEntry>()
-        val messages = mutableListOf<String>()
+        val diagnostics = mutableListOf<CapturedLog>()
         val previous = Configuration.diagnosticLogger
-        val adapter = object : ActivityLogger {
-            override fun log(entry: LogEntry, message: String) {
-                diagnostics += entry
-                messages += message
-            }
-        }
+        val adapter = CapturingActivityLogger(diagnostics)
 
         val resolved = try {
             Configuration.logDiagnosticsWith(adapter)
@@ -103,11 +93,11 @@ class ConfigurationTest {
 
         assertSame(Configuration.default, resolved)
         assertEquals(ActivityStatusLevel.Warning, diagnostics.single().level)
-        assertEquals(emptyMap(), diagnostics.single().properties)
+        assertEquals(emptyMap(), diagnostics.single().details)
         assertEquals(
             "Configuration variant 'missing' requested by ${MisconfiguredActivity::class.java.name} " +
                 "was not found; using the default one.",
-            messages.single(),
+            diagnostics.single().message,
         )
     }
 

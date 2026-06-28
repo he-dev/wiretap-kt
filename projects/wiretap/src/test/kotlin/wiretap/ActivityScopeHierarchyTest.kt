@@ -3,7 +3,6 @@ package wiretap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.Activity
-import wiretap.util.ActivityLogger
 import wiretap.util.BuzzScope
 
 class ActivityScopeHierarchyTest {
@@ -24,8 +23,6 @@ class ActivityScopeHierarchyTest {
     private class Current : Activity.Buzz()
 
     private companion object {
-        val logger = object : ActivityLogger {
-            override fun log(entry: LogEntry, message: String) = Unit
-        }
+        val logger = CapturingActivityLogger()
     }
 }
