@@ -53,8 +53,8 @@ class ComposeMessageTest {
             remarks {
                 addActivity()
                 addActivityDuration()
-                add(DottedName("second"), "Second") { label = null }
-                add(DottedName("first"), "First") { label = null }
+                add(DottedName("second"), "Second")
+                add(DottedName("first"), "First")
             }
             arrange {
                 this.add(root.activity.name)

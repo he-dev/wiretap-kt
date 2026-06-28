@@ -2,7 +2,6 @@ package wiretap.util
 
 import wiretap.meta.ActivityScopeAmbient
 import wiretap.meta.buzz.findAnnotatedProperties
-import kotlin.sequences.forEach
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
@@ -66,7 +65,7 @@ abstract class ActivityScope<A : Activity>(
             // note: Scan for annotations second.
             findAnnotatedProperties<Detail>(source).forEach { property ->
                 val annotation = property.annotation
-                val name = annotation.name.nullIfUnset() ?: property.name
+                val name = annotation.name.ifEmpty { property.name }
                 builder.add(DottedName(name), property.value(source)) {
                     cascade = annotation.cascade
                 }
@@ -87,9 +86,9 @@ abstract class ActivityScope<A : Activity>(
                 .forEach { property ->
                     //report(property.name, property.value(source), property.annotation)
                     builder.add(DottedName(property.name), property.value(source)) {
-                        label = property.annotation.label.nullIfUnset()
+                        label = property.annotation.label
                         separator = property.annotation.separator
-                        format = property.annotation.format.nullIfUnset()
+                        format = property.annotation.format
                     }
                 }
         }

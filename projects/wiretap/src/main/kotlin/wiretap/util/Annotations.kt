@@ -3,20 +3,14 @@ package wiretap.util
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Detail(
-    val name: String = Unset,
+    val name: String = "",
     val cascade: Boolean = false,
 )
-
-// meta: Annotation parameters cannot be nullable, so this sentinel represents an unspecified value.
-const val Unset: String = "\u0000"
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Remark(
-    val label: String = Unset,
+    val label: String = "",
     val separator: String = ": ",
-    val format: String = Unset,
+    val format: String = "",
 )
-
-internal fun String.nullIfUnset(): String? =
-    takeUnless { it == Unset }

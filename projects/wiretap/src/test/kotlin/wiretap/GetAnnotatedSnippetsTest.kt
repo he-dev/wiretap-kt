@@ -3,7 +3,6 @@ package wiretap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import wiretap.util.Remark
-import wiretap.util.nullIfUnset
 import wiretap.util.buzz.getAnnotatedSnippets
 
 class GetAnnotatedSnippetsTest {
@@ -12,12 +11,12 @@ class GetAnnotatedSnippetsTest {
         val matches = mutableListOf<Match>()
 
         getAnnotatedSnippets(Source("first", "second")) { name, value, annotation ->
-            matches += Match(name, value, annotation.label.nullIfUnset(), annotation.separator, annotation.format.nullIfUnset())
+            matches += Match(name, value, annotation.label, annotation.separator, annotation.format)
         }
 
         assertEquals(
             setOf(
-                Match("plain", "first", null, ": ", null),
+                Match("plain", "first", "", ": ", ""),
                 Match("formatted", "second", "Label", " = ", "%s!"),
             ),
             matches.toSet(),
@@ -27,9 +26,9 @@ class GetAnnotatedSnippetsTest {
     data class Match(
         val name: String,
         val value: Any?,
-        val label: String?,
+        val label: String,
         val separator: String,
-        val format: String?,
+        val format: String,
     )
 
     class Source(

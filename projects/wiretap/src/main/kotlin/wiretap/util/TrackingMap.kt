@@ -8,9 +8,9 @@ class DetailOptions {
 }
 
 class RemarkOptions {
-    var label: String? = null
+    var label: String = ""
     var separator: String = ": "
-    var format: String? = null
+    var format: String = ""
 }
 
 interface DetailSource {
@@ -58,16 +58,20 @@ class RemarkBuilder(
     ) {
         val options = RemarkOptions().apply(configure)
         val result = value?.let {
-            val label = options.label ?: name.parts.last()
+            val label = options.label.ifEmpty { name.parts.last() }
             val valueFormatted = options.format
+                .takeIf { it.isNotEmpty() }
                 ?.let { format -> String.format(Locale.ROOT, format, it) }
                 ?: it.toString()
 
             "$label${options.separator}$valueFormatted"
         }
 
-        val previous = remarks[name]
-        if (!remarks.containsKey(name) || previous == null && result != null) {
+        if (name in remarks) {
+            if (remarks[name] == null && result != null) {
+                remarks[name] = result
+            }
+        } else {
             remarks[name] = result
         }
     }
@@ -84,7 +88,6 @@ class RemarkBuilder(
         render: (DottedName) -> String,
         configure: RemarkOptions.() -> Unit = {},
     ) {
-        //val value = details[name]?.let(render)
         val value = render(name)
         add(name, value, configure)
     }

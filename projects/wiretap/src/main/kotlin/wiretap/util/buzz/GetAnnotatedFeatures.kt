@@ -2,7 +2,6 @@ package wiretap.util.buzz
 
 import wiretap.meta.buzz.findAnnotatedProperties
 import wiretap.util.Detail
-import wiretap.util.nullIfUnset
 
 fun getAnnotatedFeatures(
     source: Any,
@@ -11,7 +10,7 @@ fun getAnnotatedFeatures(
     findAnnotatedProperties<Detail>(source)
         .forEach { property ->
             val annotation = property.annotation
-            val name = annotation.name.nullIfUnset() ?: property.name
+            val name = annotation.name.ifEmpty { property.name }
             report(name, property.value(source), annotation)
         }
 }
