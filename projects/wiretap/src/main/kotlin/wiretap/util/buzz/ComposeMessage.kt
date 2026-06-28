@@ -35,7 +35,7 @@ class ComposeMessage internal constructor() {
     internal operator fun invoke(
         root: DottedName,
         details: MutableMap<DottedName, Any?>,
-        remarks: MutableMap<DottedName, String>
+        remarks: MutableMap<DottedName, String?>
     ): String {
         remarks(RemarkBuilder(root, details, remarks))
         val arranged = emptyList<String>().toMutableList()
@@ -57,7 +57,7 @@ fun RemarkBuilder.addActivityDuration() {
 @ComposeMessageDslMarker
 class ArrangeRemarks internal constructor(
     val root: DottedName,
-    private val remarks: MutableMap<DottedName, String>,
+    private val remarks: MutableMap<DottedName, String?>,
     private val arranged: MutableList<String>
 ) {
     fun add(name: DottedName) {
@@ -65,7 +65,7 @@ class ArrangeRemarks internal constructor(
     }
 
     fun addRemaining() {
-        remarks.forEach { arranged.add(it.value) }
+        remarks.forEach { (_, value) -> value?.let(arranged::add) }
         remarks.clear()
     }
 }
@@ -82,5 +82,4 @@ fun composeMessage(
     block(compose)
     return compose
 }
-
 

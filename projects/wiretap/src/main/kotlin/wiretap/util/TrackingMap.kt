@@ -32,14 +32,15 @@ class DetailBuilder(
         configure: DetailOptions.() -> Unit = {},
     ) {
         val options = DetailOptions().apply(configure)
+        val key = root + name
 
-        // todo: overwrite when value not null but was null before
-
-        if (level == 0) {
-            details.putIfAbsent(root + name, value)
-        } else {
-            if (options.cascade) {
-                details.putIfAbsent(root + name, value)
+        if (level == 0 || options.cascade) {
+            if (key in details) {
+                if (details[key] == null && value != null) {
+                    details[key] = value
+                }
+            } else {
+                details[key] = value
             }
         }
     }
@@ -48,7 +49,7 @@ class DetailBuilder(
 class RemarkBuilder(
     val root: DottedName,
     val details: Map<DottedName, Any?>,
-    private val remarks: MutableMap<DottedName, String>
+    private val remarks: MutableMap<DottedName, String?>
 ) {
     fun add(
         name: DottedName,
@@ -56,15 +57,19 @@ class RemarkBuilder(
         configure: RemarkOptions.() -> Unit = {},
     ) {
         val options = RemarkOptions().apply(configure)
+        val result = value?.let {
+            val label = options.label ?: name.parts.last()
+            val valueFormatted = options.format
+                ?.let { format -> String.format(Locale.ROOT, format, it) }
+                ?: it.toString()
 
-        val label = options.label ?: name.parts.last()
-        val valueFormatted = options.format
-            ?.let { String.format(Locale.ROOT, it, value) }
-            ?: value.toString()
+            "$label${options.separator}$valueFormatted"
+        }
 
-        val result =  "$label${options.separator}$valueFormatted"
-
-        remarks.putIfAbsent(name, result)
+        val previous = remarks[name]
+        if (!remarks.containsKey(name) || previous == null && result != null) {
+            remarks[name] = result
+        }
     }
 
     fun add(

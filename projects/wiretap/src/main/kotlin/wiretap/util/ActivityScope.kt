@@ -47,7 +47,7 @@ abstract class ActivityScope<A : Activity>(
 
         }.toMutableMap<DottedName, Any?>()
 
-        val remarks = emptyMap<DottedName, String>().toMutableMap()
+        val remarks = emptyMap<DottedName, String?>().toMutableMap()
 
         // core: Scan for details first.
         // note: Single pass.
