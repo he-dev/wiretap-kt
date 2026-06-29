@@ -20,8 +20,13 @@ abstract class Activity protected constructor(
         if (::status.isInitialized && this.status is Last) return false
 
         this.status = status
+        if (status is Last) {
+            onLastStatusChange()
+        }
         return true
     }
+
+    protected open fun onLastStatusChange() = Unit
 
     abstract class Buzz internal constructor(role: String) : Activity(role) {
         private lateinit var startedAt: TimeMark
@@ -35,11 +40,8 @@ abstract class Activity protected constructor(
             startedAt = TimeSource.Monotonic.markNow()
         }
 
-        internal override fun setStatus(status: ActivityStatus<*>): Boolean {
-            if (!super.setStatus(status)) return false
-
+        override fun onLastStatusChange() {
             durationMs = startedAt.elapsedNow().inWholeMilliseconds
-            return true
         }
     }
 
