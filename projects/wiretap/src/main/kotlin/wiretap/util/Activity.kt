@@ -1,5 +1,7 @@
 package wiretap.util
 
+import wiretap.util.data.Detail
+import wiretap.util.data.Remark
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 

@@ -7,7 +7,7 @@ import wiretap.core.beginBulk as beginBulkScope
 import wiretap.core.beginBuzz as beginBuzzScope
 import wiretap.coroutines.meta.ActivityScopeContextElement
 import wiretap.util.Activity
-import wiretap.util.ActivityLogger
+import wiretap.util.logging.ActivityLogger
 import wiretap.util.ActivityScope
 import wiretap.util.BulkScope
 import wiretap.util.BuzzScope

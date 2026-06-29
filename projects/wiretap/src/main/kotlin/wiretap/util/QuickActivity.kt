@@ -1,5 +1,8 @@
 package wiretap.util
 
+import wiretap.util.data.RemarkBuilder
+import wiretap.util.data.RemarkSource
+
 
 class QuickBuzz(
     override val name: String,

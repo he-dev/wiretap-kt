@@ -2,8 +2,8 @@ package wiretap.slf4j.util
 
 import org.slf4j.Logger
 import org.slf4j.event.Level
-import wiretap.util.ActivityLogger
-import wiretap.util.ActivityStatusLevel
+import wiretap.util.logging.ActivityLogger
+import wiretap.util.logging.ActivityStatusLevel
 import kotlin.collections.iterator
 
 class LoggerAdapter(val logger: Logger) : ActivityLogger {

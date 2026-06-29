@@ -2,6 +2,15 @@ package wiretap.util
 
 import wiretap.meta.ActivityScopeAmbient
 import wiretap.meta.buzz.findAnnotatedProperties
+import wiretap.util.data.Detail
+import wiretap.util.data.DetailBuilder
+import wiretap.util.data.DetailMap
+import wiretap.util.data.DetailSource
+import wiretap.util.data.Remark
+import wiretap.util.data.RemarkBuilder
+import wiretap.util.data.RemarkMap
+import wiretap.util.data.RemarkSource
+import wiretap.util.logging.ActivityLogger
 
 abstract class ActivityScope<A : Activity>(
     protected val logger: ActivityLogger,
@@ -28,7 +37,7 @@ abstract class ActivityScope<A : Activity>(
         val activities = map { it.activity }
 
         // core: Initialize with default values.
-        val details = buildMap {
+        val details = DetailMap().apply {
             put(root.activity.name, activity.name)
             put(root.activity.status.code, activity.status.code)
             put(root.activity.status.role, (activity.status as? ActivityStatusRole)?.role)
@@ -44,12 +53,11 @@ abstract class ActivityScope<A : Activity>(
             put(root.spanId, traceContext.spanId)
             put(root.parentSpanId, traceContext.parentSpanId)
 
-        }.toMutableMap<DottedName, Any?>()
+        }
 
-        val remarks = emptyMap<DottedName, String?>().toMutableMap()
+        val remarks = RemarkMap()
 
-        // core: Scan for details first.
-        // note: Single pass.
+        // core: Scan for details first; Single pass.
         activities.forEachIndexed { level, source ->
 
             // note: Each level needs its own builder.
@@ -73,8 +81,7 @@ abstract class ActivityScope<A : Activity>(
         }
 
 
-        // core: Scan for remarks in the same order as the details.
-        // note: Single pass.
+        // core: Scan for remarks in the same order as the details; Single pass.
         for (source in listOf(activity, activity.status)) {
             val builder = RemarkBuilder(root, details, remarks)
             when (source) {

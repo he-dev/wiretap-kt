@@ -1,5 +1,7 @@
 package wiretap.util
 
+import wiretap.util.logging.ActivityLogger
+import wiretap.util.logging.ActivityStatusLevel
 import java.util.Locale
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -38,5 +40,4 @@ internal fun ActivityLogger.warnAboutLastStatusOverwrite(
         "[${ignoredStatus.code.lowercase(Locale.ROOT)}]."
     log(ActivityStatusLevel.Warning,emptyMap(), message, null)
 }
-
 

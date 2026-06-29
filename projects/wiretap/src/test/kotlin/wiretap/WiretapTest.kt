@@ -13,14 +13,14 @@ import wiretap.util.ActivityStatus
 import wiretap.util.BulkItem
 import wiretap.util.Configuration
 import wiretap.util.CountOnlyBulkItem
-import wiretap.util.Detail
-import wiretap.util.DetailBuilder
-import wiretap.util.DetailSource
+import wiretap.util.data.Detail
+import wiretap.util.data.DetailBuilder
+import wiretap.util.data.DetailSource
 import wiretap.util.OmitStatus
 import wiretap.util.QuickBulk
 import wiretap.util.QuickItem
 import wiretap.util.QuickSnap
-import wiretap.util.Remark
+import wiretap.util.data.Remark
 
 class WiretapTest {
     private val logger = CapturingActivityLogger()

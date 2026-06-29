@@ -4,6 +4,7 @@ import wiretap.util.buzz.ComposeMessage
 import wiretap.util.buzz.addActivityDuration
 import wiretap.util.buzz.addActivity
 import wiretap.util.buzz.composeMessage
+import wiretap.util.logging.ActivityLogger
 import java.util.concurrent.ConcurrentHashMap
 
 object Configuration {

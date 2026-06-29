@@ -11,16 +11,16 @@ import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
 import wiretap.util.BulkItem
 import wiretap.util.Configuration
-import wiretap.util.Remark
+import wiretap.util.data.Remark
 import wiretap.util.OmitStatus
 import wiretap.util.DottedName
-import wiretap.util.Detail
-import wiretap.util.DetailBuilder
-import wiretap.util.DetailSource
+import wiretap.util.data.Detail
+import wiretap.util.data.DetailBuilder
+import wiretap.util.data.DetailSource
 import wiretap.util.activity
 import wiretap.util.state
-import wiretap.util.RemarkBuilder
-import wiretap.util.RemarkSource
+import wiretap.util.data.RemarkBuilder
+import wiretap.util.data.RemarkSource
 
 private val logger = LoggerFactory.getLogger("wiretap.demo")
 

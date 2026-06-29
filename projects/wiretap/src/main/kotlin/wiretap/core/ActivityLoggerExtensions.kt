@@ -1,7 +1,7 @@
 package wiretap.core
 
 import wiretap.util.Activity
-import wiretap.util.ActivityLogger
+import wiretap.util.logging.ActivityLogger
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
 import wiretap.util.BulkScope

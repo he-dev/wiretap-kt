@@ -1,10 +1,8 @@
 package wiretap.util
 
-enum class ActivityStatusLevel {
-    Info,
-    Warning,
-    Error,
-}
+import wiretap.util.data.Remark
+import wiretap.util.logging.ActivityStatusLevel
+
 
 sealed interface ActivityStatusRole {
     val role: String

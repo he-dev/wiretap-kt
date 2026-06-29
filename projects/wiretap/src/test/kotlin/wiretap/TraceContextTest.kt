@@ -3,11 +3,9 @@ package wiretap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import wiretap.core.beginBuzz
 import wiretap.util.Activity
-import wiretap.util.ActivityLogger
 import wiretap.util.ActivityStatus
 import wiretap.util.BuzzScope
 import wiretap.util.SnapScope

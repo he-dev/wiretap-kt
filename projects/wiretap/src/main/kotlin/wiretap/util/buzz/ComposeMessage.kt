@@ -1,7 +1,9 @@
 package wiretap.util.buzz
 
 import wiretap.util.DottedName
-import wiretap.util.RemarkBuilder
+import wiretap.util.data.DetailMap
+import wiretap.util.data.RemarkBuilder
+import wiretap.util.data.RemarkMap
 import wiretap.util.activity
 import wiretap.util.code
 import wiretap.util.durationMs
@@ -17,30 +19,30 @@ annotation class ComposeMessageDslMarker
 class ComposeMessage internal constructor() {
 
     private var remarks: (RemarkBuilder.() -> Unit) = {}
-    private var arrange: (ArrangeRemarks.() -> Unit) = { addRemaining() }
-    private var join: (JoinRemarks.() -> String) = { joinToString("; ") { it } }
+    private var arrange: (ArrangeBuilder.() -> Unit) = { addRemaining() }
+    private var join: (JoinBuilder.() -> String) = { joinToString("; ") { it } }
 
     fun remarks(block: RemarkBuilder.() -> Unit) {
         remarks = block
     }
 
-    fun arrange(block: ArrangeRemarks.() -> Unit) {
+    fun arrange(block: ArrangeBuilder.() -> Unit) {
         arrange = block
     }
 
-    fun join(block: JoinRemarks.() -> String) {
+    fun join(block: JoinBuilder.() -> String) {
         join = block
     }
 
     internal operator fun invoke(
         root: DottedName,
-        details: MutableMap<DottedName, Any?>,
-        remarks: MutableMap<DottedName, String?>
+        details: DetailMap,
+        remarks: RemarkMap
     ): String {
         remarks(RemarkBuilder(root, details, remarks))
         val arranged = emptyList<String>().toMutableList()
-        arrange(ArrangeRemarks(root, remarks, arranged))
-        return join(JoinRemarks(arranged))
+        arrange(ArrangeBuilder(root, remarks, arranged))
+        return join(JoinBuilder(arranged))
     }
 }
 
@@ -55,9 +57,9 @@ fun RemarkBuilder.addActivityDuration() {
 }
 
 @ComposeMessageDslMarker
-class ArrangeRemarks internal constructor(
+class ArrangeBuilder internal constructor(
     val root: DottedName,
-    private val remarks: MutableMap<DottedName, String?>,
+    private val remarks: RemarkMap,
     private val arranged: MutableList<String>
 ) {
     fun add(name: DottedName) {
@@ -71,7 +73,7 @@ class ArrangeRemarks internal constructor(
 }
 
 @ComposeMessageDslMarker
-class JoinRemarks internal constructor(
+class JoinBuilder internal constructor(
     remarks: List<String>,
 ) : Iterable<String> by remarks
 
@@ -82,4 +84,3 @@ fun composeMessage(
     block(compose)
     return compose
 }
-

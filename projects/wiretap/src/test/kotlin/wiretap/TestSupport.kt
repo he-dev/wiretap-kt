@@ -1,7 +1,7 @@
 package wiretap
 
-import wiretap.util.ActivityLogger
-import wiretap.util.ActivityStatusLevel
+import wiretap.util.logging.ActivityLogger
+import wiretap.util.logging.ActivityStatusLevel
 
 data class CapturedLog(
     val level: ActivityStatusLevel,

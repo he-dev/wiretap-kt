@@ -11,6 +11,8 @@ import wiretap.util.status
 import wiretap.util.buzz.addActivityDuration
 import wiretap.util.buzz.addActivity
 import wiretap.util.buzz.composeMessage
+import wiretap.util.data.DetailMap
+import wiretap.util.data.RemarkMap
 import wiretap.util.wiretap
 
 class ComposeMessageTest {
@@ -32,7 +34,7 @@ class ComposeMessageTest {
             }
         }
 
-        val details = mutableMapOf<DottedName, Any?>().apply {
+        val details = DetailMap().apply {
             put(DottedName("value"), "configured")
             put(DottedName("wiretap.activity.name"), "TestActivity")
             put(DottedName("wiretap.activity.status.code"), "Okay")
@@ -40,7 +42,7 @@ class ComposeMessageTest {
         val message = composeMessage(
             root = DottedName("wiretap"),
             details = details,
-            remarks = mutableMapOf(),
+            remarks = RemarkMap(),
         )
 
         assertEquals("name: TestActivity[Okay]; Duration: N/A; Custom: configured", message)
@@ -66,14 +68,14 @@ class ComposeMessageTest {
             }
         }
 
-        val details = mutableMapOf<DottedName, Any?>().apply {
+        val details = DetailMap().apply {
             put(root.activity.name, "TestActivity")
             put(root.activity.status.code, "Okay")
         }
         val message = composeMessage(
             root = root,
             details = details,
-            remarks = mutableMapOf(),
+            remarks = RemarkMap(),
         )
 
         assertEquals("name: TestActivity[Okay]; Duration: N/A; second: Second; first: First", message)

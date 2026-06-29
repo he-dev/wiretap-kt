@@ -1,11 +1,19 @@
-package wiretap.util
+package wiretap.util.data
 
+import wiretap.util.DottedName
 import java.util.Locale
 
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Remark(
+    val label: String = "",
+    val separator: String = ": ",
+    val format: String = "",
+)
 
-class DetailOptions {
-    var cascade: Boolean = false
-}
+class RemarkMap(
+    private val inner: MutableMap<DottedName, String?> = linkedMapOf(),
+) : MutableMap<DottedName, String?> by inner
 
 class RemarkOptions {
     var label: String = ""
@@ -13,43 +21,14 @@ class RemarkOptions {
     var format: String = ""
 }
 
-interface DetailSource {
-    fun DetailBuilder.details()
-}
-
 interface RemarkSource {
     fun RemarkBuilder.remarks()
 }
 
-class DetailBuilder(
-    private val root: DottedName,
-    private val level: Int,
-    private val details: MutableMap<DottedName, Any?>,
-) {
-    fun add(
-        name: DottedName,
-        value: Any?,
-        configure: DetailOptions.() -> Unit = {},
-    ) {
-        val options = DetailOptions().apply(configure)
-        val key = root + name
-
-        if (level == 0 || options.cascade) {
-            if (key in details) {
-                if (details[key] == null && value != null) {
-                    details[key] = value
-                }
-            } else {
-                details[key] = value
-            }
-        }
-    }
-}
-
 class RemarkBuilder(
     val root: DottedName,
-    val details: Map<DottedName, Any?>,
-    private val remarks: MutableMap<DottedName, String?>
+    val details: DetailMap,
+    private val remarks: RemarkMap,
 ) {
     fun add(
         name: DottedName,

@@ -5,8 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import wiretap.util.Activity
-import wiretap.util.ActivityStatusLevel
 import wiretap.util.Configuration
+import wiretap.util.logging.ActivityStatusLevel
 
 class ConfigurationTest {
     @Test
