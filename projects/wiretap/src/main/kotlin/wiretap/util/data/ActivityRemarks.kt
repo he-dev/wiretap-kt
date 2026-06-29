@@ -9,7 +9,20 @@ annotation class Remark(
     val label: String = "",
     val separator: String = ": ",
     val format: String = "",
+    val quoteStyle: QuoteStyle = QuoteStyle.Double,
+    val quoteMode: QuoteMode = QuoteMode.Never,
 )
+
+enum class QuoteStyle {
+    Double,
+    Single,
+}
+
+enum class QuoteMode {
+    Never,
+    Auto,
+    Always,
+}
 
 class RemarkMap(
     private val inner: MutableMap<DottedName, String?> = linkedMapOf(),
@@ -19,6 +32,8 @@ class RemarkOptions {
     var label: String = ""
     var separator: String = ": "
     var format: String = ""
+    var quoteStyle: QuoteStyle = QuoteStyle.Double
+    var quoteMode: QuoteMode = QuoteMode.Never
 }
 
 interface RemarkSource {
@@ -42,8 +57,9 @@ class RemarkBuilder(
                 .takeIf { it.isNotEmpty() }
                 ?.let { format -> String.format(Locale.ROOT, format, it) }
                 ?: it.toString()
+            val valueRendered = valueFormatted.quote(options.quoteStyle, options.quoteMode)
 
-            "$label${options.separator}$valueFormatted"
+            "$label${options.separator}$valueRendered"
         }
 
         if (name in remarks) {
@@ -71,3 +87,22 @@ class RemarkBuilder(
         add(name, value, configure)
     }
 }
+
+private fun String.quote(style: QuoteStyle, mode: QuoteMode): String {
+    val quote = when (mode) {
+        QuoteMode.Never -> return this
+        QuoteMode.Auto -> if (none(Char::isWhitespace)) return this else style.character
+        QuoteMode.Always -> style.character
+    }
+
+    return "$quote${escapeFor(quote)}$quote"
+}
+
+private val QuoteStyle.character: Char
+    get() = when (this) {
+        QuoteStyle.Double -> '"'
+        QuoteStyle.Single -> '\''
+    }
+
+private fun String.escapeFor(quote: Char): String =
+    replace("\\", "\\\\").replace(quote.toString(), "\\" + quote)

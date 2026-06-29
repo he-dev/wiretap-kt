@@ -19,6 +19,8 @@ import wiretap.util.QuickBulk
 import wiretap.util.QuickItem
 import wiretap.util.QuickSnap
 import wiretap.util.data.Remark
+import wiretap.util.data.QuoteMode
+import wiretap.util.data.QuoteStyle
 
 class WiretapTest {
     private val logger = CapturingActivityLogger()
@@ -162,6 +164,18 @@ class WiretapTest {
     }
 
     @Test
+    fun remarksCanQuoteFormattedValues() {
+        val entries = mutableListOf<CapturedLog>()
+        val logger = CapturingActivityLogger(entries)
+
+        logger.logSnap(QuoteRecord(path = "customer records.csv", code = "A42"), QuoteRecord.Okay())
+
+        val entry = entries.single()
+        assertEquals(true, entry.message.contains("Path: \"customer records.csv\""))
+        assertEquals(true, entry.message.contains("Code: 'A42'"))
+    }
+
+    @Test
     fun detailsCanCascadeFromParentActivities() {
         val entries = mutableListOf<CapturedLog>()
         val logger = CapturingActivityLogger(entries)
@@ -236,5 +250,15 @@ class WiretapTest {
         val recordId: String,
     ) : Activity.Snap() {
         class Okay : ActivityStatus.Okay<SaveRecord>()
+    }
+
+    class QuoteRecord(
+        @Remark("Path", quoteMode = QuoteMode.Auto)
+        val path: String,
+
+        @Remark("Code", quoteStyle = QuoteStyle.Single, quoteMode = QuoteMode.Always)
+        val code: String,
+    ) : Activity.Snap() {
+        class Okay : ActivityStatus.Okay<QuoteRecord>()
     }
 }

@@ -96,6 +96,8 @@ abstract class ActivityScope<A : Activity>(
                         label = property.annotation.label
                         separator = property.annotation.separator
                         format = property.annotation.format
+                        quoteStyle = property.annotation.quoteStyle
+                        quoteMode = property.annotation.quoteMode
                     }
                 }
         }
