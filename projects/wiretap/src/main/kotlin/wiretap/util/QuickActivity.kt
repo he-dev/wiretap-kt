@@ -25,11 +25,8 @@ class QuickBuzz(
 class QuickItem(
     override val name: String,
     override val message: String? = null,
-    val omitStatuses: Set<OmitStatus> = emptySet(),
-) : Activity.Item(), QuickMessageSource {
-    internal override val resolvedOmitStatuses: Set<OmitStatus>
-        get() = omitStatuses
-
+    omitStatuses: Set<OmitStatus> = emptySet(),
+) : Activity.BulkItem(omitStatuses), QuickMessageSource {
     class Okay(
         override val message: String? = null,
     ) : ActivityStatus.Okay<QuickItem>(), QuickMessageSource

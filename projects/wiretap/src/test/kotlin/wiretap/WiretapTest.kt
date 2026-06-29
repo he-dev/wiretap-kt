@@ -10,9 +10,7 @@ import wiretap.core.logSnap
 import wiretap.util.Activity
 import wiretap.util.ActivityScope
 import wiretap.util.ActivityStatus
-import wiretap.util.BulkItem
 import wiretap.util.Configuration
-import wiretap.util.CountOnlyBulkItem
 import wiretap.util.data.Detail
 import wiretap.util.data.DetailBuilder
 import wiretap.util.data.DetailSource
@@ -219,14 +217,12 @@ class WiretapTest {
         class Okay : ActivityStatus.Okay<DeleteFiles>()
     }
 
-    @CountOnlyBulkItem
-    class DeleteFile : Activity.Item() {
+    class DeleteFile : Activity.BulkItem(OmitStatus.First, OmitStatus.Last) {
         class Okay : ActivityStatus.Okay<DeleteFile>()
         class Fail : ActivityStatus.Fail<DeleteFile>()
     }
 
-    @BulkItem(OmitStatus.First)
-    class IndexReportFile : Activity.Item() {
+    class IndexReportFile : Activity.BulkItem(OmitStatus.First) {
         class Okay : ActivityStatus.Okay<IndexReportFile>()
     }
 

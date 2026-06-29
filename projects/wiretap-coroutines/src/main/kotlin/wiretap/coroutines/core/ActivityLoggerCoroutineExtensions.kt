@@ -28,14 +28,14 @@ suspend fun <A : Activity.Buzz, R> ActivityLogger.beginBuzz(
 ): R =
     this.beginBuzzScope(activity, parent, traceId).runInActivityContext(block)
 
-suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> ActivityLogger.beginBulk(
+suspend fun <B : Activity.Bulk<I>, I : Activity.BulkItem, R> ActivityLogger.beginBulk(
     activity: B,
     traceId: String? = null,
     block: suspend CoroutineScope.(BulkScope<B, I>) -> R,
 ): R =
     this.beginBulkScope(activity, traceId).runInActivityContext(block)
 
-suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> ActivityLogger.beginBulk(
+suspend fun <B : Activity.Bulk<I>, I : Activity.BulkItem, R> ActivityLogger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
     traceId: String? = null,
@@ -43,7 +43,7 @@ suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> ActivityLogger.beginBul
 ): R =
     this.beginBulkScope(activity, parent, traceId).runInActivityContext(block)
 
-suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> BulkScope<B, I>.beginItem(
+suspend fun <B : Activity.Bulk<I>, I : Activity.BulkItem, R> BulkScope<B, I>.beginItem(
     activity: I,
     block: suspend CoroutineScope.(ItemScope<I>) -> R,
 ): R =

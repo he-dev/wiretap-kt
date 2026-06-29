@@ -178,7 +178,7 @@ open class BuzzScope<A : Activity.Buzz>(
     }
 }
 
-class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
+class BulkScope<B : Activity.Bulk<I>, I : Activity.BulkItem>(
     logger: ActivityLogger,
     activity: B,
     parent: ActivityScope<*>?,
@@ -200,7 +200,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
         beginItem(activity).use(block)
 
     companion object {
-        fun <B : Activity.Bulk<I>, I : Activity.Item> push(
+        fun <B : Activity.Bulk<I>, I : Activity.BulkItem> push(
             logger: ActivityLogger,
             activity: B,
             parent: ActivityScope<*>? = ActivityScope.current(),
@@ -210,7 +210,7 @@ class BulkScope<B : Activity.Bulk<I>, I : Activity.Item>(
     }
 }
 
-class ItemScope<I : Activity.Item>(
+class ItemScope<I : Activity.BulkItem>(
     logger: ActivityLogger,
     activity: I,
     parent: ActivityScope<*>?,
@@ -227,10 +227,10 @@ class ItemScope<I : Activity.Item>(
     }
 
     override fun omits(status: OmitStatus): Boolean =
-        status in activity.resolvedOmitStatuses
+        status in activity.omitStatuses
 
     companion object {
-        fun <I : Activity.Item> push(
+        fun <I : Activity.BulkItem> push(
             logger: ActivityLogger,
             activity: I,
             parent: ActivityScope<*>?,

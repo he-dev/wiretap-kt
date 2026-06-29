@@ -43,14 +43,15 @@ abstract class Activity protected constructor(
         }
     }
 
-    abstract class Item : Buzz("item") {
-        internal open val resolvedOmitStatuses: Set<OmitStatus>
-            get() = bulkItemStatusOmissions(javaClass)
-    }
-
     abstract class Snap : Activity("snap")
 
-    abstract class Bulk<I : Item> : Buzz("bulk") {
+    abstract class BulkItem protected constructor(
+        val omitStatuses: Set<OmitStatus> = emptySet(),
+    ) : Buzz("item") {
+        protected constructor(vararg omitStatuses: OmitStatus) : this(omitStatuses.toSet())
+    }
+
+    abstract class Bulk<I : BulkItem> : Buzz("bulk") {
         // core: Bulk calculations live with their activity, so publication needs no scope-specific path.
         internal val math = BulkMath()
 

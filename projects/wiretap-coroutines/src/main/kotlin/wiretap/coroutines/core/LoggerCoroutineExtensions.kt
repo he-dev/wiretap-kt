@@ -23,14 +23,14 @@ suspend fun <A : Activity.Buzz, R> Logger.beginBuzz(
 ): R =
     LoggerAdapter(this).beginBuzz(activity, parent, traceId, block)
 
-suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> Logger.beginBulk(
+suspend fun <B : Activity.Bulk<I>, I : Activity.BulkItem, R> Logger.beginBulk(
     activity: B,
     traceId: String? = null,
     block: suspend CoroutineScope.(BulkScope<B, I>) -> R,
 ): R =
     LoggerAdapter(this).beginBulk(activity, traceId, block)
 
-suspend fun <B : Activity.Bulk<I>, I : Activity.Item, R> Logger.beginBulk(
+suspend fun <B : Activity.Bulk<I>, I : Activity.BulkItem, R> Logger.beginBulk(
     activity: B,
     parent: ActivityScope<*>?,
     traceId: String? = null,

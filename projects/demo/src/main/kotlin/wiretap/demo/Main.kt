@@ -9,7 +9,6 @@ import wiretap.util.Activity
 import wiretap.util.ActivityStatus
 import wiretap.slf4j.core.logSnap
 import wiretap.slf4j.core.useDiagnosticsLogger
-import wiretap.util.BulkItem
 import wiretap.util.Configuration
 import wiretap.util.data.Remark
 import wiretap.util.OmitStatus
@@ -100,8 +99,7 @@ class DeleteFiles : Activity.Bulk<DeleteFile>() {
     class Okay : ActivityStatus.Okay<DeleteFiles>()
 }
 
-@BulkItem(OmitStatus.First)
-class DeleteFile(private val path: String) : Activity.Item() {
+class DeleteFile(private val path: String) : Activity.BulkItem(OmitStatus.First) {
     class Okay : ActivityStatus.Okay<DeleteFile>()
 
     class Fail(exception: Throwable) : ActivityStatus.Fail<DeleteFile>(exception)
